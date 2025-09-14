@@ -1,17 +1,15 @@
 #include "physics/physics_engine.h"
 #include <algorithm>
 
-PhysicsObject::PhysicsObject(const glm::vec3& position,
-                             const glm::vec3& velocity,
-                             float mass)
+PhysObj::PhysObj(const glm::vec3& position, const glm::vec3& velocity, float mass)
     : position(position), velocity(velocity), acceleration(0.0f), mass(mass) {}
 
-void PhysicsObject::applyForce(const glm::vec3& force) {
+void PhysObj::applyForce(const glm::vec3& force) {
     if (mass > 0.0f)
         acceleration += force / mass;
 }
 
-void PhysicsObject::integrate(float deltaTime) {
+void PhysObj::integrate(float deltaTime) {
     // simple Euler integration
     velocity += acceleration * deltaTime;
     position += velocity * deltaTime;
@@ -22,18 +20,18 @@ void PhysicsObject::integrate(float deltaTime) {
 
 // ---------------- PhysicsEngine ----------------
 
-PhysicsEngine::PhysicsEngine() = default;
+PhysicsEngine::PhysicsEngine() {}
 
-void PhysicsEngine::addPhysObj(std::shared_ptr<PhysicsObject> physObj) {
-    physObjs.push_back(physObj);
+void PhysicsEngine::addPhysObj(int id, PhysObj* physObj) {
+    physObjs.emplace(id, physObj);
 }
 
-void PhysicsEngine::removePhysObj(std::shared_ptr<PhysicsObject> physObj) {
-    physObjs.erase(std::remove(physObjs.begin(), physObjs.end(), physObj));
+void PhysicsEngine::removePhysObj(int id) {
+    physObjs.erase(id);
 }
 
 void PhysicsEngine::updateAll(float deltaTime) {
-    for (auto obj : physObjs) {
+    for (auto& [id, obj] : physObjs) {
         obj->applyForce(glm::vec3(0, -9.81, 0));
         if (obj->position.y <= 0) {
             obj->position.y = 0;
@@ -43,7 +41,7 @@ void PhysicsEngine::updateAll(float deltaTime) {
     }
     
 
-    for (auto& obj : physObjs) {
+    for (auto& [id, obj] : physObjs) {
         obj->integrate(deltaTime);
     }
 }

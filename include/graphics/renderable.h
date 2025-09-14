@@ -13,7 +13,7 @@ class Renderable {
 public:
     Renderable(const std::vector<float>& vertices,
                const std::vector<unsigned int>& indices,
-               std::shared_ptr<Shader> shader,
+               Shader* shader,
                glm::vec3 color);
     virtual ~Renderable();
 
@@ -22,11 +22,11 @@ public:
     void setModel(const glm::mat4& model);
     glm::mat4& getModel();
 
-    std::shared_ptr<Shader> getShader();
+    Shader* getShader();
 
 protected:
     GLuint VAO, VBO, EBO;
-    std::shared_ptr<Shader> shader;
+    Shader* shader;
     glm::mat4 model;
     glm::vec3 color;
     GLsizei indexCount;
@@ -37,15 +37,15 @@ protected:
 
 class Cube : public Renderable {
 public:
-    Cube(std::shared_ptr<Shader> shader, glm::vec3 color);
-    Cube(std::shared_ptr<Shader> shader, glm::vec3 color, const glm::mat4& initialModel);
+    Cube(Shader* shader, glm::vec3 color);
+    Cube(Shader* shader, glm::vec3 color, const glm::mat4& initialModel);
 };
 
 class Sphere : public Renderable {
 public:
-    Sphere(std::shared_ptr<Shader> shader, glm::vec3 color, float radius, 
+    Sphere(Shader* shader, glm::vec3 color, float radius, 
            unsigned int sectorCount = 36, unsigned int stackCount = 18);
-    Sphere(std::shared_ptr<Shader> shader, glm::vec3 color, float radius, const glm::mat4& initialModel,
+    Sphere(Shader* shader, glm::vec3 color, float radius, const glm::mat4& initialModel,
            unsigned int sectorCount = 36, unsigned int stackCount = 18);
 };
 

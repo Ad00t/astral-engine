@@ -10,26 +10,26 @@
 #include <memory>
 
 int main() {
-    auto gEng = std::make_shared<GraphicsEngine>(1280, 720, "Astral Engine");
-    std::shared_ptr<Camera> cam = std::make_shared<OrbitalCamera>(gEng->window);
-    auto pEng = std::make_shared<PhysicsEngine>();
-    auto sim = std::make_unique<Simulation>(gEng, pEng);
+    GraphicsEngine gEng(1280, 720, "Astral Engine");
+    OrbitalCamera cam(gEng.window);
+    PhysicsEngine pEng;
+    Simulation sim(gEng, pEng);
 
-    sim->addSimObj(std::make_shared<SimObj>(
-        std::make_shared<Cube>(gEng->getShader("basic"), glm::vec3(0,0,1)),
-        std::make_shared<PhysicsObject>(glm::vec3(0, 10, 0))
-    ));
+    sim.addSimObj(1, 
+        std::make_unique<Cube>(gEng.getShader("basic"), glm::vec3(0,0,1)),
+        std::make_unique<PhysObj>(glm::vec3(0, 10, 0))
+    );
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGui::StyleColorsDark();
-    ImGui_ImplGlfw_InitForOpenGL(gEng->window, true);
+    ImGui_ImplGlfw_InitForOpenGL(gEng.window, true);
     ImGui_ImplOpenGL3_Init("#version 430");
 
     double lastTime = glfwGetTime();
 
-    while (!glfwWindowShouldClose(gEng->window)) {
+    while (!glfwWindowShouldClose(gEng.window)) {
         double now = glfwGetTime();
         double dt = now - lastTime;   // seconds since last frame
         lastTime = now;
@@ -38,8 +38,8 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         
-        cam->update();
-        sim->update(cam, dt);
+        cam.update();
+        sim.update(cam, dt);
 
         ImGui::SetNextWindowPos(ImVec2(10, 10));
         ImGui::SetNextWindowBgAlpha(0.3f); // Transparent background
@@ -53,14 +53,14 @@ int main() {
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());    
 
-        glfwSwapBuffers(gEng->window);
+        glfwSwapBuffers(gEng.window);
         glfwPollEvents();
     }
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    glfwDestroyWindow(gEng->window);
+    glfwDestroyWindow(gEng.window);
     glfwTerminate();
 
     return 0;

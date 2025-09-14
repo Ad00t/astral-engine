@@ -1,6 +1,5 @@
 #include "graphics/graphics_engine.h"
 #include "glad/gl.h"
-#include "glm/ext/matrix_transform.hpp"
 #include "graphics/shader.h"
 #include "graphics/camera.h"
 #include "graphics/renderable.h"
@@ -11,8 +10,8 @@
 #include <memory>
 #include <algorithm>
 
-GraphicsEngine::GraphicsEngine(int width, int height, const char* title):
-    width(width), height(height), title(title) {
+GraphicsEngine::GraphicsEngine(int width, int height, std::string title)
+    : width(width), height(height), title(title) {
     if (!glfwInit()) {
         fprintf(stderr, "GLFW init failed\n");
         exit(EXIT_FAILURE);
@@ -22,7 +21,7 @@ GraphicsEngine::GraphicsEngine(int width, int height, const char* title):
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    window = glfwCreateWindow(width, height, "Astral Engine", NULL, NULL);
+    window = glfwCreateWindow(width, height, title.c_str(), NULL, NULL);
     if (!window) {
         fprintf(stderr, "Failed to create GLFW window\n");
         glfwTerminate();
@@ -39,7 +38,7 @@ GraphicsEngine::GraphicsEngine(int width, int height, const char* title):
     }
     printf("OpenGL %s\n", glGetString(GL_VERSION));
     
-    shaders["basic"] = std::make_shared<Shader>(
+    shaders["basic"] = std::make_unique<Shader>(
         "resources/shaders/base.vert", 
         "resources/shaders/base.frag"
     );
@@ -49,38 +48,39 @@ GraphicsEngine::GraphicsEngine(int width, int height, const char* title):
 
 GraphicsEngine::~GraphicsEngine() {}
 
-void GraphicsEngine::addRenderable(std::shared_ptr<Renderable> r) {
-    renderables[r->getShader()->ID].push_back(r);
+void GraphicsEngine::addRenderable(int id, Renderable* r) {
+    renderables.emplace(id, r);
+    shaderGroups[r->getShader()->ID].push_back(id);
 }
 
-void GraphicsEngine::removeRenderable(std::shared_ptr<Renderable> r) {
-    auto it = renderables.find(r->getShader()->ID);
-    if (it != renderables.end()) {
+void GraphicsEngine::removeRenderable(int id) {
+    auto it = shaderGroups.find(renderables[id]->getShader()->ID);
+    if (it != shaderGroups.end()) {
         auto &vec = it->second;
-        vec.erase(std::remove(vec.begin(), vec.end(), r), vec.end());
-        
+        vec.erase(std::remove(vec.begin(), vec.end(), id), vec.end());
         if (vec.empty()) {
-            renderables.erase(it);
+            shaderGroups.erase(it);
         }
     }
+    renderables.erase(id);
 }
 
-void GraphicsEngine::renderScene(std::shared_ptr<Camera> cam) {
+void GraphicsEngine::renderScene(const Camera& cam) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, width, height);
     glEnable(GL_DEPTH_TEST);
 
-    for (auto &[shaderID, shaderGroup] : renderables) {
+    for (auto& [shaderID, group] : shaderGroups) {
         glUseProgram(shaderID); 
-        for (auto& renderable : shaderGroup) {
-            renderable->draw(cam->view, cam->projection);
+        for (auto& id : group) {
+            renderables[id]->draw(cam.view, cam.projection);
         }
     }
 };
 
-std::shared_ptr<Shader> GraphicsEngine::getShader(const char* name) {
-    return shaders[name];
+Shader* GraphicsEngine::getShader(std::string name) {
+    return shaders[name].get();
 }
 
 void GraphicsEngine::handleError(int error, const char* description) {

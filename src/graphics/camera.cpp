@@ -2,6 +2,7 @@
 
 #include "graphics/camera.h" 
 #include <GLFW/glfw3.h>
+#include <iostream>
 
 Camera::Camera(GLFWwindow* window): window(window) {
     glfwGetWindowSize(window, &width, &height);

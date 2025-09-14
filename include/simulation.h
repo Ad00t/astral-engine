@@ -5,48 +5,54 @@
 #include "graphics/camera.h"
 #include "graphics/renderable.h"
 #include "physics/physics_engine.h"
-#include <vector>
+#include <unordered_map>
 #include <memory>
 
 class SimObj {
 public:
-    SimObj(std::shared_ptr<Renderable> renderable,
-           std::shared_ptr<PhysicsObject> physObj);
-
+    SimObj(int id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj);
     ~SimObj() = default;
+
+    // default move operations
+    SimObj(SimObj&&) = default;
+    SimObj& operator=(SimObj&&) = default;
+
+    // delete copy operations
+    SimObj(const SimObj&) = delete;
+    SimObj& operator=(const SimObj&) = delete;
 
     // update renderable model from physObj 
     void syncPhysicsToRender();
 
     // accessors
-    std::shared_ptr<Renderable> getRenderable() const;
-    std::shared_ptr<PhysicsObject> getPhysObj() const;
+    int getID() const;
+    Renderable* getRenderable() const;
+    PhysObj* getPhysObj() const;
 
 private:
-    std::shared_ptr<Renderable> renderable;
-    std::shared_ptr<PhysicsObject> physObj;
+    int id;
+    std::unique_ptr<Renderable> renderable;
+    std::unique_ptr<PhysObj> physObj;
 };
 
 class Simulation {
 public:
-    Simulation(std::shared_ptr<GraphicsEngine> gEng,
-               std::shared_ptr<PhysicsEngine> pEng);
-
+    Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng);
     ~Simulation() = default;
 
     // add an object to simulation
-    void addSimObj(std::shared_ptr<SimObj> obj);
+    void addSimObj(int id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj);
 
     // remove an object from simulation
-    void removeSimObj(std::shared_ptr<SimObj> obj);
+    void removeSimObj(int id);
 
     // main update loop: steps physObj, syncs objects, and renders
-    void update(std::shared_ptr<Camera> cam, float deltaTime);
+    void update(const Camera& cam, float deltaTime);
 
 private:
-    std::shared_ptr<GraphicsEngine> gEng;
-    std::shared_ptr<PhysicsEngine> pEng;
-    std::vector<std::shared_ptr<SimObj>> simObjs;
+    GraphicsEngine& gEng;
+    PhysicsEngine& pEng;
+    std::unordered_map<int, SimObj> simObjs;
 };
 
 #endif // SIMULATION_H

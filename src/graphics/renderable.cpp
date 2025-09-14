@@ -7,7 +7,7 @@
 
 Renderable::Renderable(const std::vector<float>& vertices,
                        const std::vector<unsigned int>& indices,
-                       std::shared_ptr<Shader> shader,
+                       Shader* shader,
                        glm::vec3 color)
     : VAO(0), VBO(0), EBO(0), shader(shader), color(color), model(glm::mat4(1.0f)) {
     setupMesh(vertices, indices);
@@ -48,7 +48,7 @@ void Renderable::draw(const glm::mat4& view, const glm::mat4& projection) {
     GLint modelLoc = glGetUniformLocation(shader->ID, "model");
     GLint viewLoc  = glGetUniformLocation(shader->ID, "view");
     GLint projLoc  = glGetUniformLocation(shader->ID, "projection");
-    GLint colorLoc = glGetUniformLocation(shader->ID, "objectColor"); 
+    GLint colorLoc = glGetUniformLocation(shader->ID, "objectColor");
 
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
@@ -68,7 +68,7 @@ glm::mat4& Renderable::getModel() {
     return model;
 }
 
-std::shared_ptr<Shader> Renderable::getShader() {
+Shader* Renderable::getShader() {
     return shader;
 }
 
@@ -94,10 +94,10 @@ static const std::vector<unsigned int> cubeIndices = {
     0,1,5, 5,4,0
 };
 
-Cube::Cube(std::shared_ptr<Shader> shader, glm::vec3 color)
+Cube::Cube(Shader* shader, glm::vec3 color)
 : Renderable(cubeVertices, cubeIndices, shader, color) {}
 
-Cube::Cube(std::shared_ptr<Shader> shader, glm::vec3 color, const glm::mat4& initialModel)
+Cube::Cube(Shader* shader, glm::vec3 color, const glm::mat4& initialModel)
 : Renderable(cubeVertices, cubeIndices, shader, color) {
     model = initialModel;
 }
@@ -146,7 +146,7 @@ static void generateSphere(float radius, unsigned int sectorCount, unsigned int 
     }
 }
 
-Sphere::Sphere(std::shared_ptr<Shader> shader, glm::vec3 color, float radius, unsigned int sectorCount, unsigned int stackCount)
+Sphere::Sphere(Shader* shader, glm::vec3 color, float radius, unsigned int sectorCount, unsigned int stackCount)
     : Renderable(std::vector<float>(), std::vector<unsigned int>(), shader, color) {
 
     std::vector<float> vertices;
@@ -155,7 +155,7 @@ Sphere::Sphere(std::shared_ptr<Shader> shader, glm::vec3 color, float radius, un
     setupMesh(vertices, indices);
 }
 
-Sphere::Sphere(std::shared_ptr<Shader> shader, glm::vec3 color, float radius, const glm::mat4& initialModel,
+Sphere::Sphere(Shader* shader, glm::vec3 color, float radius, const glm::mat4& initialModel,
                unsigned int sectorCount, unsigned int stackCount)
     : Renderable(std::vector<float>(), std::vector<unsigned int>(), shader, color) {
 

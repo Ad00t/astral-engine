@@ -13,22 +13,23 @@ class GraphicsEngine {
 public:
     GLFWwindow* window;
     int width, height;
-    const char* title;
+    std::string title;
 
-    GraphicsEngine(int width, int height, const char* title);
+    GraphicsEngine(int width, int height, std::string title);
     ~GraphicsEngine();
 
-    void addRenderable(std::shared_ptr<Renderable> r);
-    void removeRenderable(std::shared_ptr<Renderable> r);
+    void addRenderable(int id, Renderable* r);
+    void removeRenderable(int id);
         
-    void renderScene(std::shared_ptr<Camera> cam); 
+    void renderScene(const Camera& cam); 
    
-    std::shared_ptr<Shader> getShader(const char* name); 
+    Shader* getShader(std::string name); 
     void handleError(int error, const char* description);
 
 private:
-    std::unordered_map<unsigned int, std::vector<std::shared_ptr<Renderable>>> renderables;
-    std::unordered_map<std::string, std::shared_ptr<Shader>> shaders;
+    std::unordered_map<int, Renderable*> renderables;
+    std::unordered_map<int, std::vector<int>> shaderGroups;
+    std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
 };
 
 #endif

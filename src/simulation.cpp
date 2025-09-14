@@ -4,48 +4,50 @@
 #include "physics/physics_engine.h"
 #include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
+#include <memory>
 
-SimObj::SimObj(std::shared_ptr<Renderable> renderable,
-               std::shared_ptr<PhysicsObject> physObj)
-    : renderable(renderable), physObj(physObj) {}
+SimObj::SimObj(int id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj)
+    : id(id), renderable(std::move(renderable)), physObj(std::move(physObj)) {}
 
 void SimObj::syncPhysicsToRender() {
-    if (physObj && renderable) {
-        // simple translation based on physObj position
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), physObj->position);
-        renderable->setModel(model);
-    }
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), physObj->position);
+    renderable->setModel(model);
 }
 
-std::shared_ptr<Renderable> SimObj::getRenderable() const {
-    return renderable;
+int SimObj::getID() const {
+    return id;
 }
 
-std::shared_ptr<PhysicsObject> SimObj::getPhysObj() const {
-    return physObj;
+Renderable* SimObj::getRenderable() const {
+    return renderable.get();
 }
-Simulation::Simulation(std::shared_ptr<GraphicsEngine> gEng,
-                       std::shared_ptr<PhysicsEngine> pEng)
-    : gEng(gEng), pEng(pEng) {}
+
+PhysObj* SimObj::getPhysObj() const {
+    return physObj.get();
+}
 
 // ---------------- SIMULATION -----------------
 
-void Simulation::addSimObj(std::shared_ptr<SimObj> obj) {
-    simObjs.push_back(obj);
-    gEng->addRenderable(obj->getRenderable());
-    pEng->addPhysObj(obj->getPhysObj());
+Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng)
+    : gEng(gEng), pEng(pEng) {}
+
+void Simulation::addSimObj(int id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj) {
+    SimObj obj(id, std::move(renderable), std::move(physObj));
+    gEng.addRenderable(id, obj.getRenderable());
+    pEng.addPhysObj(id, obj.getPhysObj());
+    simObjs.emplace(id, std::move(obj));
 }
 
-void Simulation::removeSimObj(std::shared_ptr<SimObj> obj) {
-    pEng->removePhysObj(obj->getPhysObj());
-    gEng->removeRenderable(obj->getRenderable());
-    simObjs.erase(std::remove(simObjs.begin(), simObjs.end(), obj), simObjs.end());
+void Simulation::removeSimObj(int id) {
+    pEng.removePhysObj(id);
+    gEng.removeRenderable(id);
+    simObjs.erase(id);
 }
 
-void Simulation::update(std::shared_ptr<Camera> cam, float deltaTime) {
-    pEng->updateAll(deltaTime);
-    for (auto &obj : simObjs) {
-        obj->syncPhysicsToRender();
+void Simulation::update(const Camera& cam, float deltaTime) {
+    pEng.updateAll(deltaTime);
+    for (auto& [id, simObj] : simObjs) {
+        simObj.syncPhysicsToRender();
     }
-    gEng->renderScene(cam);
+    gEng.renderScene(cam);
 }
