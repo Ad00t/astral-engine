@@ -1,0 +1,59 @@
+// References: https://github.com/kavan010/black_hole/blob/main/black_hole.cpp
+
+#ifndef CAMERA_H
+#define CAMERA_H
+
+#include "opengl_includes.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+class Camera {
+public:
+    int width, height;
+
+    float orbitSpeed = 0.01f;
+    float panSpeed = 0.01f;
+    double zoomSpeed = 1;
+
+    GLFWwindow* window;
+    glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 projection; 
+
+    Camera(GLFWwindow* window);
+    ~Camera();
+
+    virtual void update();
+    virtual void handleMouseMove(GLFWwindow* win, double x, double y);
+    virtual void handleMouseButton(GLFWwindow* win, int button, int action, int mods);
+    virtual void handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset);
+    virtual void handleKeyboard(GLFWwindow* win, int key, int scancode, int action, int mods);
+};
+
+class OrbitalCamera : public Camera {
+public:
+    float radius = 5;
+    float minRadius = 1, maxRadius = 10;
+
+    bool dragging = false;
+    bool panning = false;
+    bool moving = false; 
+    double lastX = 0.0, lastY = 0.0;
+   
+    float azimuth = 0.0f;
+    float elevation = M_PI / 2.0f;
+
+    glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f); 
+    
+    OrbitalCamera(GLFWwindow* window);
+    ~OrbitalCamera();
+
+    void update() override;
+    void handleMouseMove(GLFWwindow* win, double x, double y) override;
+    void handleMouseButton(GLFWwindow* win, int button, int action, int mods) override;
+    void handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) override;
+};
+
+#endif
