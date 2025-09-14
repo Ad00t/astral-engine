@@ -1,11 +1,15 @@
 #include "graphics/graphics_engine.h"
+#include "glad/gl.h"
+#include "glm/ext/matrix_transform.hpp"
 #include "graphics/shader.h"
 #include "graphics/camera.h"
+#include "graphics/renderable.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <cmath>
 #include <cstdio>
+#include <memory>
+#include <algorithm>
 
 GraphicsEngine::GraphicsEngine(int width, int height, const char* title):
     width(width), height(height), title(title) {
@@ -35,17 +39,9 @@ GraphicsEngine::GraphicsEngine(int width, int height, const char* title):
     }
     printf("OpenGL %s\n", glGetString(GL_VERSION));
     
-    glEnable(GL_DEPTH_TEST);
-    
-    baseShader = Shader(
+    shaders["basic"] = std::make_shared<Shader>(
         "resources/shaders/base.vert", 
         "resources/shaders/base.frag"
-    );
-
-    initCube();
-    testCubeShader = Shader(
-        "resources/shaders/test_cube.vert", 
-        "resources/shaders/test_cube.frag"
     );
 
     printf("Graphics engine initialized\n");
@@ -53,80 +49,39 @@ GraphicsEngine::GraphicsEngine(int width, int height, const char* title):
 
 GraphicsEngine::~GraphicsEngine() {}
 
-void GraphicsEngine::initCube() {
-    float vertices[] = {
-        // positions       
-        -0.5f, -0.5f, -0.5f, 
-         0.5f, -0.5f, -0.5f, 
-         0.5f,  0.5f, -0.5f, 
-         0.5f,  0.5f, -0.5f, 
-        -0.5f,  0.5f, -0.5f, 
-        -0.5f, -0.5f, -0.5f,
-
-        -0.5f, -0.5f,  0.5f, 
-         0.5f, -0.5f,  0.5f, 
-         0.5f,  0.5f,  0.5f, 
-         0.5f,  0.5f,  0.5f, 
-        -0.5f,  0.5f,  0.5f, 
-        -0.5f, -0.5f,  0.5f,
-
-        -0.5f,  0.5f,  0.5f, 
-        -0.5f,  0.5f, -0.5f, 
-        -0.5f, -0.5f, -0.5f, 
-        -0.5f, -0.5f, -0.5f, 
-        -0.5f, -0.5f,  0.5f, 
-        -0.5f,  0.5f,  0.5f,
-
-         0.5f,  0.5f,  0.5f, 
-         0.5f,  0.5f, -0.5f, 
-         0.5f, -0.5f, -0.5f, 
-         0.5f, -0.5f, -0.5f, 
-         0.5f, -0.5f,  0.5f, 
-         0.5f,  0.5f,  0.5f,
-
-        -0.5f, -0.5f, -0.5f, 
-         0.5f, -0.5f, -0.5f, 
-         0.5f, -0.5f,  0.5f, 
-         0.5f, -0.5f,  0.5f, 
-        -0.5f, -0.5f,  0.5f, 
-        -0.5f, -0.5f, -0.5f,
-
-        -0.5f,  0.5f, -0.5f, 
-         0.5f,  0.5f, -0.5f, 
-         0.5f,  0.5f,  0.5f, 
-         0.5f,  0.5f,  0.5f, 
-        -0.5f,  0.5f,  0.5f, 
-        -0.5f,  0.5f, -0.5f
-    };
-
-    glGenVertexArrays(1, &cubeVAO);
-    glGenBuffers(1, &cubeVBO);
-
-    glBindVertexArray(cubeVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glEnableVertexAttribArray(0); // position
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-
-    glBindVertexArray(0);
+void GraphicsEngine::addRenderable(std::shared_ptr<Renderable> r) {
+    renderables[r->getShader()->ID].push_back(r);
 }
 
-void GraphicsEngine::renderScene(const Camera& cam) {
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);  // optional, but good practice
+void GraphicsEngine::removeRenderable(std::shared_ptr<Renderable> r) {
+    auto it = renderables.find(r->getShader()->ID);
+    if (it != renderables.end()) {
+        auto &vec = it->second;
+        vec.erase(std::remove(vec.begin(), vec.end(), r), vec.end());
+        
+        if (vec.empty()) {
+            renderables.erase(it);
+        }
+    }
+}
+
+void GraphicsEngine::renderScene(std::shared_ptr<Camera> cam) {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0, 0, width, height);
-
-    testCubeShader.use();
-    glBindVertexArray(cubeVAO);
-
-    glUniformMatrix4fv(glGetUniformLocation(testCubeShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(cam.model));
-    glUniformMatrix4fv(glGetUniformLocation(testCubeShader.ID, "view"), 1, GL_FALSE, glm::value_ptr(cam.view));
-    glUniformMatrix4fv(glGetUniformLocation(testCubeShader.ID, "projection"), 1, GL_FALSE, glm::value_ptr(cam.projection));
-
     glEnable(GL_DEPTH_TEST);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    for (auto &[shaderID, shaderGroup] : renderables) {
+        glUseProgram(shaderID); 
+        for (auto& renderable : shaderGroup) {
+            renderable->draw(cam->view, cam->projection);
+        }
+    }
 };
+
+std::shared_ptr<Shader> GraphicsEngine::getShader(const char* name) {
+    return shaders[name];
+}
 
 void GraphicsEngine::handleError(int error, const char* description) {
     fprintf(stderr, "Graphics Engine Error %d: %s\n", error, description);

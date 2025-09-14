@@ -22,7 +22,6 @@ Camera::Camera(GLFWwindow* window): window(window) {
         Camera* cam = (Camera*)glfwGetWindowUserPointer(win);
         cam->handleKeyboard(win, key, scancode, action, mods);
     });
-    update();
 }
 Camera::~Camera() {}
 
@@ -72,7 +71,6 @@ void OrbitalCamera::handleMouseMove(GLFWwindow* win, double x, double y) {
 
     lastX = x;
     lastY = y;
-    update();
 }
 
 void OrbitalCamera::handleMouseButton(GLFWwindow* win, int button, int action, int mods) {
@@ -92,5 +90,4 @@ void OrbitalCamera::handleMouseButton(GLFWwindow* win, int button, int action, i
 void OrbitalCamera::handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) {
     radius -= yoffset * zoomSpeed;
     radius = glm::clamp(radius, minRadius, maxRadius);
-    update();
 }

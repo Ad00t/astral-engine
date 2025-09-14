@@ -34,8 +34,8 @@ public:
 
 class OrbitalCamera : public Camera {
 public:
-    float radius = 5;
-    float minRadius = 1, maxRadius = 10;
+    float radius = 10;
+    float minRadius = 1, maxRadius = 100;
 
     bool dragging = false;
     bool panning = false;
