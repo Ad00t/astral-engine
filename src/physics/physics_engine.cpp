@@ -1,21 +1,27 @@
 #include "physics/physics_engine.h"
+#include "glm/glm.hpp" 
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/string_cast.hpp"
+#include <cstdio>
+#include <iostream>
 #include <algorithm>
+#include <cmath>
 
-PhysObj::PhysObj(const glm::vec3& position, const glm::vec3& velocity, float mass)
-    : position(position), velocity(velocity), acceleration(0.0f), mass(mass) {}
+PhysObj::PhysObj(glm::vec3 pos, glm::vec3 vel, float mass)
+    : pos(pos), vel(vel), acc(0.0f), mass(mass) {}
 
 void PhysObj::applyForce(const glm::vec3& force) {
     if (mass > 0.0f)
-        acceleration += force / mass;
+        acc += force / mass;
 }
 
-void PhysObj::integrate(float deltaTime) {
-    // simple Euler integration
-    velocity += acceleration * deltaTime;
-    position += velocity * deltaTime;
+void PhysObj::integrate(float dT) {
+    // Velocity Verlet integration 
+    pos = pos + vel*dT + 0.5f*acc*powf(dT, 2);
+    vel = vel + acc*dT;
 
-    // reset acceleration after integration
-    acceleration = glm::vec3(0.0f);
+    // Reset acc after integration
+    acc = glm::vec3(0.0f);
 }
 
 // ---------------- PhysicsEngine ----------------
@@ -30,18 +36,23 @@ void PhysicsEngine::removePhysObj(int id) {
     physObjs.erase(id);
 }
 
-void PhysicsEngine::updateAll(float deltaTime) {
-    for (auto& [id, obj] : physObjs) {
-        obj->applyForce(glm::vec3(0, -9.81, 0));
-        if (obj->position.y <= 0) {
-            obj->position.y = 0;
-            obj->velocity.y = 0;
-            obj->acceleration.y = 0;
-        }
+// Main physics loop logic
+void PhysicsEngine::updateAll(float dT) {
+    for (auto it1 = physObjs.begin(); it1 != physObjs.end(); ++it1) {
+        auto& [id1, obj1] = *it1;
+        for (auto it2 = ++it1; it2 != physObjs.end(); ++it2) {
+            auto& [id2, obj2] = *it2;
+            glm::vec3 dir = obj2->pos - obj1->pos;
+            float r = glm::length(dir);
+            if (r < 1e-4f) continue;
+            glm::vec3 F_g = (float)(G * obj1->mass * obj2->mass / powf(r, 2)) * glm::normalize(dir);
+            obj1->applyForce(F_g);
+            obj2->applyForce(-F_g);
+        } 
     }
     
 
     for (auto& [id, obj] : physObjs) {
-        obj->integrate(deltaTime);
+        obj->integrate(dT);
     }
 }

@@ -11,13 +11,18 @@
 
 int main() {
     GraphicsEngine gEng(1280, 720, "Astral Engine");
-    OrbitalCamera cam(gEng.window);
+    OrbitalCamera cam(gEng.window, 5e7f * SCALE_FACTOR, 1.0f, 1e15f, 0.01f, 0.01f, 1000.0f);
     PhysicsEngine pEng;
     Simulation sim(gEng, pEng);
 
     sim.addSimObj(1, 
-        std::make_unique<Cube>(gEng.getShader("basic"), glm::vec3(0,0,1)),
-        std::make_unique<PhysObj>(glm::vec3(0, 10, 0))
+        std::make_unique<Sphere>(gEng.getShader("basic"), glm::vec3(0, 0, 1), 6.371e6 * SCALE_FACTOR),
+        std::make_unique<PhysObj>(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), 5.972e30)
+    );
+    
+    sim.addSimObj(2, 
+        std::make_unique<Sphere>(gEng.getShader("basic"), glm::vec3(1, 1, 1), 1.7375e6 * SCALE_FACTOR),
+        std::make_unique<PhysObj>(glm::vec3(3.84e7, 0, 0), glm::vec3(0, 0, 1.022e6), 7.35E22)
     );
 
     IMGUI_CHECKVERSION();
@@ -38,7 +43,7 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         
-        cam.update();
+        cam.update(sim.getSimObj(1)->getPhysObj()->pos);
         sim.update(cam, dt);
 
         ImGui::SetNextWindowPos(ImVec2(10, 10));

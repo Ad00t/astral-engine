@@ -10,6 +10,11 @@
 #include <memory>
 
 class GraphicsEngine {
+private:
+    std::unordered_map<int, Renderable*> renderables;
+    std::unordered_map<int, std::vector<int>> shaderGroups;
+    std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
+
 public:
     GLFWwindow* window;
     int width, height;
@@ -25,11 +30,6 @@ public:
    
     Shader* getShader(std::string name); 
     void handleError(int error, const char* description);
-
-private:
-    std::unordered_map<int, Renderable*> renderables;
-    std::unordered_map<int, std::vector<int>> shaderGroups;
-    std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
 };
 
 #endif

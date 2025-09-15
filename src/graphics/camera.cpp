@@ -1,10 +1,15 @@
 // References: https://github.com/kavan010/black_hole/blob/main/black_hole.cpp
 
 #include "graphics/camera.h" 
-#include <GLFW/glfw3.h>
+#include "glm/ext/matrix_clip_space.hpp"
+#include "opengl_includes.h"
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/string_cast.hpp"
 #include <iostream>
+#include <string>
 
-Camera::Camera(GLFWwindow* window): window(window) {
+Camera::Camera(GLFWwindow* window, glm::vec3 position = glm::vec3(0.0f), float orbitSpeed = 0.01f, float panSpeed = 0.01f, float zoomSpeed = 1.0f)
+    : window(window), position(position), orbitSpeed(orbitSpeed), panSpeed(panSpeed), zoomSpeed(zoomSpeed) {
     glfwGetWindowSize(window, &width, &height);
     glfwSetWindowUserPointer(window, this);
     glfwSetMouseButtonCallback(window, [](GLFWwindow* win, int button, int action, int mods) {
@@ -32,28 +37,32 @@ void Camera::handleMouseButton(GLFWwindow* win, int button, int action, int mods
 void Camera::handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) {}
 void Camera::handleKeyboard(GLFWwindow* win, int key, int scancode, int action, int mods) {}
 
-OrbitalCamera::OrbitalCamera(GLFWwindow* window): Camera(window) {}
+OrbitalCamera::OrbitalCamera(GLFWwindow* window, float initialRadius, float minRadius, float maxRadius, float orbitSpeed, float panSpeed, float zoomSpeed)
+    : Camera(window, glm::vec3(0.0f), orbitSpeed, panSpeed, zoomSpeed), radius(initialRadius), minRadius(minRadius), maxRadius(maxRadius) {}
 OrbitalCamera::~OrbitalCamera() {}
 
 void OrbitalCamera::update() {
-    target = glm::vec3(0.0f, 0.0f, 0.0f); // keep target on origin
-    if(dragging | panning) {
+    update(glm::vec3(0.0f));
+}
+
+void OrbitalCamera::update(glm::vec3 target) {
+    if (dragging || panning) {
         moving = true;
     } else {
         moving = false;
     }
 
     float clampedElevation = glm::clamp(elevation, 0.01f, float(M_PI) - 0.01f);
-    // Orbit around (0,0,0) always
+    
     position = glm::vec3(
         radius * sin(clampedElevation) * cos(azimuth),
         radius * cos(clampedElevation),
         radius * sin(clampedElevation) * sin(azimuth)
-    );
+    ) + target;
    
     model = glm::mat4(1.0f);
     view = glm::lookAt(position, target, glm::vec3(0,1,0));
-    projection = glm::perspective(glm::radians(60.0f), float(width) / height, 0.1f, 100.0f);
+    projection = glm::infinitePerspective(glm::radians(60.0f), float(width) / float(height), minRadius * 1e-2f);
 }
 
 void OrbitalCamera::handleMouseMove(GLFWwindow* win, double x, double y) {

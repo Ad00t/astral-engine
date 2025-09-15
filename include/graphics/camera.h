@@ -12,17 +12,17 @@ class Camera {
 public:
     int width, height;
 
-    float orbitSpeed = 0.01f;
-    float panSpeed = 0.01f;
-    double zoomSpeed = 1;
+    float orbitSpeed;
+    float panSpeed;
+    float zoomSpeed;
 
     GLFWwindow* window;
-    glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 position;
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 projection; 
 
-    Camera(GLFWwindow* window);
+    Camera(GLFWwindow* window, glm::vec3 position, float orbitSpeed, float panSpeed, float zoomSpeed);
     ~Camera();
 
     virtual void update();
@@ -45,12 +45,11 @@ public:
     float azimuth = 0.0f;
     float elevation = M_PI / 2.0f;
 
-    glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f); 
-    
-    OrbitalCamera(GLFWwindow* window);
+    OrbitalCamera(GLFWwindow* window, float initialRadius, float minRadius, float maxRadius, float orbitSpeed, float panSpeed, float zoomSpeed);
     ~OrbitalCamera();
 
     void update() override;
+    void update(glm::vec3 target);
     void handleMouseMove(GLFWwindow* win, double x, double y) override;
     void handleMouseButton(GLFWwindow* win, int button, int action, int mods) override;
     void handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) override;

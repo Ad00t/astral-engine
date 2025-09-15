@@ -10,6 +10,16 @@
 #include <memory>
 
 class Renderable {
+protected:
+    GLuint VAO, VBO, EBO;
+    Shader* shader;
+    glm::mat4 model;
+    glm::vec3 color;
+    GLsizei indexCount;
+
+    void setupMesh(const std::vector<float>& vertices,
+                   const std::vector<unsigned int>& indices);
+
 public:
     Renderable(const std::vector<float>& vertices,
                const std::vector<unsigned int>& indices,
@@ -23,16 +33,6 @@ public:
     glm::mat4& getModel();
 
     Shader* getShader();
-
-protected:
-    GLuint VAO, VBO, EBO;
-    Shader* shader;
-    glm::mat4 model;
-    glm::vec3 color;
-    GLsizei indexCount;
-
-    void setupMesh(const std::vector<float>& vertices,
-                   const std::vector<unsigned int>& indices);
 };
 
 class Cube : public Renderable {

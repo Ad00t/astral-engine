@@ -10,7 +10,7 @@ SimObj::SimObj(int id, std::unique_ptr<Renderable> renderable, std::unique_ptr<P
     : id(id), renderable(std::move(renderable)), physObj(std::move(physObj)) {}
 
 void SimObj::syncPhysicsToRender() {
-    glm::mat4 model = glm::translate(glm::mat4(1.0f), physObj->position);
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), physObj->pos * (float)SCALE_FACTOR);
     renderable->setModel(model);
 }
 
@@ -42,6 +42,13 @@ void Simulation::removeSimObj(int id) {
     pEng.removePhysObj(id);
     gEng.removeRenderable(id);
     simObjs.erase(id);
+}
+
+const SimObj* Simulation::getSimObj(int id) const {
+    auto it = simObjs.find(id);
+    if (it != simObjs.end())
+        return &it->second;  
+    return nullptr;        
 }
 
 void Simulation::update(const Camera& cam, float deltaTime) {
