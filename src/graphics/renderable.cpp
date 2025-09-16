@@ -1,4 +1,5 @@
 #include "graphics/renderable.h"
+#include "utils.h"
 #include "opengl_includes.h"
 #include "graphics/shader.h"
 #include <vector>
@@ -146,8 +147,8 @@ static void generateSphere(float radius, unsigned int sectorCount, unsigned int 
     }
 }
 
-Sphere::Sphere(Shader* shader, glm::vec3 color, float radius, unsigned int sectorCount, unsigned int stackCount)
-    : Renderable(std::vector<float>(), std::vector<unsigned int>(), shader, color) {
+Sphere::Sphere(Shader* shader, glm::vec3 color, float realRadius, unsigned int sectorCount, unsigned int stackCount)
+    : Renderable(std::vector<float>(), std::vector<unsigned int>(), shader, color), radius(toRender(realRadius)) {
 
     std::vector<float> vertices;
     std::vector<unsigned int> indices;
@@ -155,9 +156,9 @@ Sphere::Sphere(Shader* shader, glm::vec3 color, float radius, unsigned int secto
     setupMesh(vertices, indices);
 }
 
-Sphere::Sphere(Shader* shader, glm::vec3 color, float radius, const glm::mat4& initialModel,
+Sphere::Sphere(Shader* shader, glm::vec3 color, float realRadius, const glm::mat4& initialModel,
                unsigned int sectorCount, unsigned int stackCount)
-    : Renderable(std::vector<float>(), std::vector<unsigned int>(), shader, color) {
+    : Renderable(std::vector<float>(), std::vector<unsigned int>(), shader, color), radius(toRender(realRadius)) {
 
     std::vector<float> vertices;
     std::vector<unsigned int> indices;

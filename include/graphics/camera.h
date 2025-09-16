@@ -26,6 +26,8 @@ public:
     ~Camera();
 
     virtual void update();
+    void cleanup();
+
     virtual void handleMouseMove(GLFWwindow* win, double x, double y);
     virtual void handleMouseButton(GLFWwindow* win, int button, int action, int mods);
     virtual void handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset);
@@ -45,11 +47,11 @@ public:
     float azimuth = 0.0f;
     float elevation = M_PI / 2.0f;
 
-    OrbitalCamera(GLFWwindow* window, float initialRadius, float minRadius, float maxRadius, float orbitSpeed, float panSpeed, float zoomSpeed);
+    OrbitalCamera(GLFWwindow* window, float initialRealRadius, float minRealRadius, float maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed);
     ~OrbitalCamera();
 
     void update() override;
-    void update(glm::vec3 target);
+    void update(glm::vec3 realTarget);
     void handleMouseMove(GLFWwindow* win, double x, double y) override;
     void handleMouseButton(GLFWwindow* win, int button, int action, int mods) override;
     void handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) override;

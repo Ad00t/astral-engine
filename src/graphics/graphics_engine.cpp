@@ -46,7 +46,9 @@ GraphicsEngine::GraphicsEngine(int width, int height, std::string title)
     printf("Graphics engine initialized\n");
 }
 
-GraphicsEngine::~GraphicsEngine() {}
+GraphicsEngine::~GraphicsEngine() {
+    cleanup();
+}
 
 void GraphicsEngine::addRenderable(int id, Renderable* r) {
     renderables.emplace(id, r);
@@ -65,6 +67,11 @@ void GraphicsEngine::removeRenderable(int id) {
     renderables.erase(id);
 }
 
+void GraphicsEngine::clear() {
+    shaderGroups.clear();
+    renderables.clear();
+}
+
 void GraphicsEngine::renderScene(const Camera& cam) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -79,10 +86,23 @@ void GraphicsEngine::renderScene(const Camera& cam) {
     }
 };
 
-Shader* GraphicsEngine::getShader(std::string name) {
-    return shaders[name].get();
+void GraphicsEngine::finishRender() {
+    glfwPollEvents();
+    glfwSwapBuffers(window);
 }
 
+void GraphicsEngine::cleanup() {
+    glfwDestroyWindow(window);
+    glfwTerminate();
+}
+
+Shader* GraphicsEngine::getShader(const std::string& name) {
+    auto it = shaders.find(name);
+    if (it == shaders.end()) {
+        return nullptr; 
+    }
+    return it->second.get();
+}
 void GraphicsEngine::handleError(int error, const char* description) {
     fprintf(stderr, "Graphics Engine Error %d: %s\n", error, description);
 }

@@ -25,10 +25,13 @@ public:
 
     void addRenderable(int id, Renderable* r);
     void removeRenderable(int id);
-        
+    void clear();
+
     void renderScene(const Camera& cam); 
-   
-    Shader* getShader(std::string name); 
+    void finishRender();
+    void cleanup();
+
+    Shader* getShader(const std::string& name); 
     void handleError(int error, const char* description);
 };
 

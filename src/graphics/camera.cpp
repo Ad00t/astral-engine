@@ -2,9 +2,13 @@
 
 #include "graphics/camera.h" 
 #include "glm/ext/matrix_clip_space.hpp"
+#include "imgui_impl_glfw.h"
 #include "opengl_includes.h"
+#include <GLFW/glfw3.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/string_cast.hpp"
+#include "utils.h"
+#include "imgui.h"
 #include <iostream>
 #include <string>
 
@@ -14,38 +18,63 @@ Camera::Camera(GLFWwindow* window, glm::vec3 position = glm::vec3(0.0f), float o
     glfwSetWindowUserPointer(window, this);
     glfwSetMouseButtonCallback(window, [](GLFWwindow* win, int button, int action, int mods) {
         Camera* cam = (Camera*)glfwGetWindowUserPointer(win);
-        cam->handleMouseButton(win, button, action, mods);
+        ImGuiIO& io = ImGui::GetIO();
+        ImGui_ImplGlfw_MouseButtonCallback(win, button, action, mods);
+        if (!io.WantCaptureMouse) 
+            cam->handleMouseButton(win, button, action, mods);
     });
     glfwSetCursorPosCallback(window, [](GLFWwindow* win, double x, double y) {
         Camera* cam = (Camera*)glfwGetWindowUserPointer(win);
-        cam->handleMouseMove(win, x, y);
+        ImGuiIO& io = ImGui::GetIO();
+        ImGui_ImplGlfw_CursorPosCallback(win, x, y);
+        if (!io.WantCaptureMouse) 
+            cam->handleMouseMove(win, x, y);
     });
     glfwSetScrollCallback(window, [](GLFWwindow* win, double xoffset, double yoffset) {
         Camera* cam = (Camera*)glfwGetWindowUserPointer(win);
-        cam->handleMouseScroll(win, xoffset, yoffset);
+        ImGuiIO& io = ImGui::GetIO();
+        ImGui_ImplGlfw_ScrollCallback(win, xoffset, yoffset);
+        if (!io.WantCaptureMouse) 
+            cam->handleMouseScroll(win, xoffset, yoffset);
     });
     glfwSetKeyCallback(window, [](GLFWwindow* win, int key, int scancode, int action, int mods) {
         Camera* cam = (Camera*)glfwGetWindowUserPointer(win);
-        cam->handleKeyboard(win, key, scancode, action, mods);
+        ImGuiIO& io = ImGui::GetIO();
+        ImGui_ImplGlfw_KeyCallback(win, key, scancode, action, mods);
+        if (!io.WantCaptureKeyboard) 
+            cam->handleKeyboard(win, key, scancode, action, mods);
     });
 }
-Camera::~Camera() {}
+
+Camera::~Camera() {
+    cleanup();
+}
 
 void Camera::update() {}
+void Camera::cleanup() {
+    glfwSetMouseButtonCallback(window, nullptr);
+    glfwSetCursorPosCallback(window, nullptr);
+    glfwSetScrollCallback(window, nullptr);
+    glfwSetKeyCallback(window, nullptr);
+}
+
 void Camera::handleMouseMove(GLFWwindow* win, double x, double y) {}
 void Camera::handleMouseButton(GLFWwindow* win, int button, int action, int mods) {}
 void Camera::handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) {}
 void Camera::handleKeyboard(GLFWwindow* win, int key, int scancode, int action, int mods) {}
 
-OrbitalCamera::OrbitalCamera(GLFWwindow* window, float initialRadius, float minRadius, float maxRadius, float orbitSpeed, float panSpeed, float zoomSpeed)
-    : Camera(window, glm::vec3(0.0f), orbitSpeed, panSpeed, zoomSpeed), radius(initialRadius), minRadius(minRadius), maxRadius(maxRadius) {}
+OrbitalCamera::OrbitalCamera(GLFWwindow* window, float initialRealRadius, float minRealRadius, float maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed)
+    : Camera(window, glm::vec3(0.0f), orbitSpeed, panSpeed, zoomSpeed), radius(toRender(initialRealRadius)), minRadius(toRender(minRealRadius)), maxRadius(toRender(maxRealRadius)) {}
+
 OrbitalCamera::~OrbitalCamera() {}
 
 void OrbitalCamera::update() {
     update(glm::vec3(0.0f));
 }
 
-void OrbitalCamera::update(glm::vec3 target) {
+void OrbitalCamera::update(glm::vec3 realTarget) {
+    glm::vec3 renderTarget = toRender(realTarget);
+
     if (dragging || panning) {
         moving = true;
     } else {
@@ -58,10 +87,10 @@ void OrbitalCamera::update(glm::vec3 target) {
         radius * sin(clampedElevation) * cos(azimuth),
         radius * cos(clampedElevation),
         radius * sin(clampedElevation) * sin(azimuth)
-    ) + target;
+    ) + renderTarget;
    
     model = glm::mat4(1.0f);
-    view = glm::lookAt(position, target, glm::vec3(0,1,0));
+    view = glm::lookAt(position, renderTarget, glm::vec3(0,1,0));
     projection = glm::infinitePerspective(glm::radians(60.0f), float(width) / float(height), minRadius * 1e-2f);
 }
 
@@ -97,7 +126,7 @@ void OrbitalCamera::handleMouseButton(GLFWwindow* win, int button, int action, i
     }
 }
 
-void OrbitalCamera::handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) {
+void OrbitalCamera::handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) { 
     radius -= yoffset * zoomSpeed;
     radius = glm::clamp(radius, minRadius, maxRadius);
 }

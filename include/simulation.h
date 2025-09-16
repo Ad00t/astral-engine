@@ -8,8 +8,6 @@
 #include <unordered_map>
 #include <memory>
 
-#define SCALE_FACTOR   1e-4f
-
 class SimObj {
 public:
     SimObj(int id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj);
@@ -40,11 +38,12 @@ private:
 class Simulation {
 public:
     Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng);
-    ~Simulation() = default;
+    ~Simulation();
 
     void addSimObj(int id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj);
     void removeSimObj(int id);
     const SimObj* getSimObj(int id) const;
+    void clear();
 
     // main update loop: steps physObj, syncs objects, and renders
     void update(const Camera& cam, float deltaTime);

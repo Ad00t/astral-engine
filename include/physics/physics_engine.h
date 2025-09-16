@@ -34,6 +34,7 @@ public:
 
     void addPhysObj(int id, PhysObj*);
     void removePhysObj(int id);
+    void clear();
 
     // updates physics state of all objects 
     void updateAll(float dT);

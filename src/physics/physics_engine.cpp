@@ -36,11 +36,17 @@ void PhysicsEngine::removePhysObj(int id) {
     physObjs.erase(id);
 }
 
+void PhysicsEngine::clear() {
+    physObjs.clear();
+}
+
 // Main physics loop logic
 void PhysicsEngine::updateAll(float dT) {
     for (auto it1 = physObjs.begin(); it1 != physObjs.end(); ++it1) {
         auto& [id1, obj1] = *it1;
-        for (auto it2 = ++it1; it2 != physObjs.end(); ++it2) {
+        auto it2 = it1;
+        ++it2;
+        for (auto it2 = it1; it2 != physObjs.end(); ++it2) {
             auto& [id2, obj2] = *it2;
             glm::vec3 dir = obj2->pos - obj1->pos;
             float r = glm::length(dir);

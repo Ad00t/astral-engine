@@ -42,10 +42,13 @@ public:
 };
 
 class Sphere : public Renderable {
+private:
+    float radius;
+
 public:
-    Sphere(Shader* shader, glm::vec3 color, float radius, 
+    Sphere(Shader* shader, glm::vec3 color, float realRadius, 
            unsigned int sectorCount = 36, unsigned int stackCount = 18);
-    Sphere(Shader* shader, glm::vec3 color, float radius, const glm::mat4& initialModel,
+    Sphere(Shader* shader, glm::vec3 color, float realRadius, const glm::mat4& initialModel,
            unsigned int sectorCount = 36, unsigned int stackCount = 18);
 };
 
