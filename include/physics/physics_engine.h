@@ -5,23 +5,22 @@
 #include <memory>
 #include <glm/glm.hpp>
 
-#define G   6.67430E-11
-
 class PhysObj {
 public:
-    glm::vec3 pos;      // m
-    glm::vec3 vel;      // m/s
-    glm::vec3 acc;      // m/s^2
-    float mass;         // kg
+    glm::dvec3 pos;      // m
+    glm::dvec3 vel;      // m/s
+    glm::dvec3 acc;      // m/s^2
+    glm::dvec3 acc_new;  // m/s^2
+    double mass;         // kg
 
-    PhysObj(glm::vec3 pos = glm::vec3(0.0f),
-            glm::vec3 vel = glm::vec3(0.0f),
-            float mass = 1.0f);
+    PhysObj(glm::dvec3 pos = glm::dvec3(0.0),
+            glm::dvec3 vel = glm::dvec3(0.0),
+            double mass = 1.0);
 
     virtual ~PhysObj() = default;
 
-    void applyForce(const glm::vec3& force);
-    void integrate(float deltaTime);
+    void applyForce(const glm::dvec3& force);
+    void integrate(double dT);
 };
 
 class PhysicsEngine {
@@ -30,7 +29,7 @@ private:
 
 public:
     PhysicsEngine();
-    ~PhysicsEngine() = default;
+    ~PhysicsEngine();
 
     void addPhysObj(int id, PhysObj*);
     void removePhysObj(int id);

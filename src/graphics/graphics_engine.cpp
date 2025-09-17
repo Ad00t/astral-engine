@@ -3,6 +3,7 @@
 #include "graphics/shader.h"
 #include "graphics/camera.h"
 #include "graphics/renderable.h"
+#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -20,6 +21,7 @@ GraphicsEngine::GraphicsEngine(int width, int height, std::string title)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 
     window = glfwCreateWindow(width, height, title.c_str(), NULL, NULL);
     if (!window) {

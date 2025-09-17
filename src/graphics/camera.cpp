@@ -63,7 +63,7 @@ void Camera::handleMouseButton(GLFWwindow* win, int button, int action, int mods
 void Camera::handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) {}
 void Camera::handleKeyboard(GLFWwindow* win, int key, int scancode, int action, int mods) {}
 
-OrbitalCamera::OrbitalCamera(GLFWwindow* window, float initialRealRadius, float minRealRadius, float maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed)
+OrbitalCamera::OrbitalCamera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed)
     : Camera(window, glm::vec3(0.0f), orbitSpeed, panSpeed, zoomSpeed), radius(toRender(initialRealRadius)), minRadius(toRender(minRealRadius)), maxRadius(toRender(maxRealRadius)) {}
 
 OrbitalCamera::~OrbitalCamera() {}
@@ -72,7 +72,7 @@ void OrbitalCamera::update() {
     update(glm::vec3(0.0f));
 }
 
-void OrbitalCamera::update(glm::vec3 realTarget) {
+void OrbitalCamera::update(glm::dvec3 realTarget) {
     glm::vec3 renderTarget = toRender(realTarget);
 
     if (dragging || panning) {

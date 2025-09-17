@@ -36,8 +36,8 @@ public:
 
 class OrbitalCamera : public Camera {
 public:
-    float radius = 10;
-    float minRadius = 1, maxRadius = 100;
+    float radius;
+    float minRadius, maxRadius;
 
     bool dragging = false;
     bool panning = false;
@@ -47,11 +47,11 @@ public:
     float azimuth = 0.0f;
     float elevation = M_PI / 2.0f;
 
-    OrbitalCamera(GLFWwindow* window, float initialRealRadius, float minRealRadius, float maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed);
+    OrbitalCamera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed);
     ~OrbitalCamera();
 
     void update() override;
-    void update(glm::vec3 realTarget);
+    void update(glm::dvec3 realTarget);
     void handleMouseMove(GLFWwindow* win, double x, double y) override;
     void handleMouseButton(GLFWwindow* win, int button, int action, int mods) override;
     void handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) override;

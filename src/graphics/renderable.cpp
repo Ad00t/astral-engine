@@ -147,7 +147,7 @@ static void generateSphere(float radius, unsigned int sectorCount, unsigned int 
     }
 }
 
-Sphere::Sphere(Shader* shader, glm::vec3 color, float realRadius, unsigned int sectorCount, unsigned int stackCount)
+Sphere::Sphere(Shader* shader, glm::vec3 color, double realRadius, unsigned int sectorCount, unsigned int stackCount)
     : Renderable(std::vector<float>(), std::vector<unsigned int>(), shader, color), radius(toRender(realRadius)) {
 
     std::vector<float> vertices;
@@ -156,7 +156,7 @@ Sphere::Sphere(Shader* shader, glm::vec3 color, float realRadius, unsigned int s
     setupMesh(vertices, indices);
 }
 
-Sphere::Sphere(Shader* shader, glm::vec3 color, float realRadius, const glm::mat4& initialModel,
+Sphere::Sphere(Shader* shader, glm::vec3 color, double realRadius, const glm::mat4& initialModel,
                unsigned int sectorCount, unsigned int stackCount)
     : Renderable(std::vector<float>(), std::vector<unsigned int>(), shader, color), radius(toRender(realRadius)) {
 

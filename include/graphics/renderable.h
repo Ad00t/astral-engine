@@ -46,9 +46,9 @@ private:
     float radius;
 
 public:
-    Sphere(Shader* shader, glm::vec3 color, float realRadius, 
+    Sphere(Shader* shader, glm::vec3 color, double realRadius, 
            unsigned int sectorCount = 36, unsigned int stackCount = 18);
-    Sphere(Shader* shader, glm::vec3 color, float realRadius, const glm::mat4& initialModel,
+    Sphere(Shader* shader, glm::vec3 color, double realRadius, const glm::mat4& initialModel,
            unsigned int sectorCount = 36, unsigned int stackCount = 18);
 };
 

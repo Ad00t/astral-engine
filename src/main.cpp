@@ -10,7 +10,7 @@
 #include <memory>
 
 int main() {
-    GraphicsEngine gEng(1280, 720, "Astral Engine");
+    GraphicsEngine gEng(1920, 1080, "Astral Engine v1.0.0");
     GUI gui(gEng.window);
     OrbitalCamera cam(gEng.window, 5e7f, 1e6f, 1e22f, 0.01f, 0.01f, 10.0f);
     PhysicsEngine pEng;
@@ -28,7 +28,7 @@ int main() {
     
     sim.addSimObj(2, // Moon 
         std::make_unique<Sphere>(gEng.getShader("basic"), glm::vec3(1, 1, 1), 1.7375e6),
-        std::make_unique<PhysObj>(glm::vec3(1.496e11 + 3.84e7, 0, 0), glm::vec3(0, 0, 1.022e6), 7.35E22)
+        std::make_unique<PhysObj>(glm::vec3(1.496e11 + 3.84e8, 0, 0), glm::vec3(0, 0, 3.0e4 + 1.022e3), 7.35e22)
     );
 
     int targetID = 2;
@@ -40,7 +40,7 @@ int main() {
         lastTime = now;
         gui.newFrame();
      
-        cam.update(sim.getSimObj(targetID)->getPhysObj()->pos);
+        cam.update(sim.getSimObj(1)->getPhysObj()->pos);
         sim.update(cam, gui.btn_paused ? 0 : dT * gui.slider_sim_speed);
                
         gui.drawElements();
