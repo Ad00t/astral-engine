@@ -98,7 +98,7 @@ void OrbitalCamera::handleMouseMove(GLFWwindow* win, double x, double y) {
     if (dragging) {
         azimuth = std::fmod(azimuth + dx*orbitSpeed, 2*M_PI);
         elevation = glm::clamp(elevation - dy*orbitSpeed, -float(M_PI)/2 + 0.01f, float(M_PI)/2 - 0.01f);
-        printf("dx:%.1f dy:%.1f az:%.2f el:%.2f\n", dx, dy, glm::degrees(azimuth), glm::degrees(elevation)); 
+        // printf("dx:%.1f dy:%.1f az:%.2f el:%.2f\n", dx, dy, glm::degrees(azimuth), glm::degrees(elevation)); 
     }
 
     lastX = x;
