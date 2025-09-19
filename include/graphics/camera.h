@@ -1,5 +1,3 @@
-// References: https://github.com/kavan010/black_hole/blob/main/black_hole.cpp
-
 #ifndef CAMERA_H
 #define CAMERA_H
 
@@ -7,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <cmath>
 
 class Camera {
 public:
@@ -40,12 +39,10 @@ public:
     float minRadius, maxRadius;
 
     bool dragging = false;
-    bool panning = false;
-    bool moving = false; 
     double lastX = 0.0, lastY = 0.0;
    
     float azimuth = 0.0f;
-    float elevation = M_PI / 2.0f;
+    float elevation = 0.0f;
 
     OrbitalCamera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed);
     ~OrbitalCamera();

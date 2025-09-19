@@ -17,10 +17,9 @@ private:
 
 public:
     GLFWwindow* window;
-    int width, height;
     std::string title;
 
-    GraphicsEngine(int width, int height, std::string title);
+    GraphicsEngine(std::string title, int initialWidth, int initialHeight);
     ~GraphicsEngine();
 
     void addRenderable(int id, Renderable* r);

@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <cmath>
 #include <glm/glm.hpp>
 
 constexpr double RENDER_SCALE = 1e-6; // 1 render unit = 1,000,000 m

@@ -1,5 +1,3 @@
-// References: https://github.com/kavan010/black_hole/blob/main/black_hole.cpp
-
 #include "graphics/camera.h" 
 #include "glm/ext/matrix_clip_space.hpp"
 #include "imgui_impl_glfw.h"
@@ -9,6 +7,7 @@
 #include "glm/gtx/string_cast.hpp"
 #include "utils.h"
 #include "imgui.h"
+#include <cmath>
 #include <iostream>
 #include <string>
 
@@ -44,18 +43,23 @@ Camera::Camera(GLFWwindow* window, glm::vec3 position = glm::vec3(0.0f), float o
         if (!io.WantCaptureKeyboard) 
             cam->handleKeyboard(win, key, scancode, action, mods);
     });
+    glfwSetFramebufferSizeCallback(window, [](GLFWwindow* win, int width, int height) {
+        Camera* cam = (Camera*)glfwGetWindowUserPointer(win);
+        glViewport(0, 0, width, height);
+        glfwGetWindowSize(win, &cam->width, &cam->height);
+    });
 }
 
 Camera::~Camera() {
     cleanup();
 }
-
 void Camera::update() {}
 void Camera::cleanup() {
     glfwSetMouseButtonCallback(window, nullptr);
     glfwSetCursorPosCallback(window, nullptr);
     glfwSetScrollCallback(window, nullptr);
     glfwSetKeyCallback(window, nullptr);
+    glfwSetFramebufferSizeCallback(window, nullptr);
 }
 
 void Camera::handleMouseMove(GLFWwindow* win, double x, double y) {}
@@ -75,37 +79,26 @@ void OrbitalCamera::update() {
 void OrbitalCamera::update(glm::dvec3 realTarget) {
     glm::vec3 renderTarget = toRender(realTarget);
 
-    if (dragging || panning) {
-        moving = true;
-    } else {
-        moving = false;
-    }
-
-    float clampedElevation = glm::clamp(elevation, 0.01f, float(M_PI) - 0.01f);
-    
     position = glm::vec3(
-        radius * sin(clampedElevation) * cos(azimuth),
-        radius * cos(clampedElevation),
-        radius * sin(clampedElevation) * sin(azimuth)
+        radius * cos(elevation) * cos(azimuth),
+        radius * cos(elevation) * sin(azimuth),
+        radius * sin(elevation)
     ) + renderTarget;
-   
+    // position = toRender(glm::dvec3(1.496e11 + 5e7f, 0, 5e7f)); 
+    
     model = glm::mat4(1.0f);
-    view = glm::lookAt(position, renderTarget, glm::vec3(0,1,0));
-    projection = glm::infinitePerspective(glm::radians(60.0f), float(width) / float(height), minRadius * 1e-2f);
+    view = glm::lookAt(position, renderTarget, glm::vec3(0,0,1));
+    projection = glm::infinitePerspective(glm::radians(60.0f), float(width) / float(height), 0.1f);
 }
 
 void OrbitalCamera::handleMouseMove(GLFWwindow* win, double x, double y) {
     float dx = float(x - lastX);
     float dy = float(y - lastY);
 
-    if (dragging && panning) {
-        // Pan: Shift + Left or Middle Mouse
-        // Disable panning to keep camera centered on black hole
-    } else if (dragging && !panning) {
-        // Orbit: Left mouse only
-        azimuth   += dx * orbitSpeed;
-        elevation -= dy * orbitSpeed;
-        elevation = glm::clamp(elevation, 0.01f, float(M_PI) - 0.01f);
+    if (dragging) {
+        azimuth = std::fmod(azimuth + dx*orbitSpeed, 2*M_PI);
+        elevation = glm::clamp(elevation - dy*orbitSpeed, -float(M_PI)/2 + 0.01f, float(M_PI)/2 - 0.01f);
+        printf("dx:%.1f dy:%.1f az:%.2f el:%.2f\n", dx, dy, glm::degrees(azimuth), glm::degrees(elevation)); 
     }
 
     lastX = x;
@@ -113,20 +106,16 @@ void OrbitalCamera::handleMouseMove(GLFWwindow* win, double x, double y) {
 }
 
 void OrbitalCamera::handleMouseButton(GLFWwindow* win, int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT || button == GLFW_MOUSE_BUTTON_MIDDLE) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
         if (action == GLFW_PRESS) {
             dragging = true;
-            // Disable panning so camera always orbits center
-            panning = false;
             glfwGetCursorPos(win, &lastX, &lastY);
         } else if (action == GLFW_RELEASE) {
             dragging = false;
-            panning = false;
         }
     }
 }
 
 void OrbitalCamera::handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) { 
-    radius -= yoffset * zoomSpeed;
-    radius = glm::clamp(radius, minRadius, maxRadius);
+    radius = glm::clamp(radius - (float) yoffset*zoomSpeed, minRadius, maxRadius);
 }

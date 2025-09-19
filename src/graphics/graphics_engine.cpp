@@ -11,8 +11,8 @@
 #include <memory>
 #include <algorithm>
 
-GraphicsEngine::GraphicsEngine(int width, int height, std::string title)
-    : width(width), height(height), title(title) {
+GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialHeight)
+    : title(title) {
     if (!glfwInit()) {
         fprintf(stderr, "GLFW init failed\n");
         exit(EXIT_FAILURE);
@@ -21,9 +21,8 @@ GraphicsEngine::GraphicsEngine(int width, int height, std::string title)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 
-    window = glfwCreateWindow(width, height, title.c_str(), NULL, NULL);
+    window = glfwCreateWindow(initialWidth, initialHeight, title.c_str(), NULL, NULL);
     if (!window) {
         fprintf(stderr, "Failed to create GLFW window\n");
         glfwTerminate();
@@ -45,6 +44,7 @@ GraphicsEngine::GraphicsEngine(int width, int height, std::string title)
         "resources/shaders/base.frag"
     );
 
+    glViewport(0, 0, initialWidth, initialHeight);
     printf("Graphics engine initialized\n");
 }
 
@@ -77,7 +77,6 @@ void GraphicsEngine::clear() {
 void GraphicsEngine::renderScene(const Camera& cam) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glViewport(0, 0, width, height);
     glEnable(GL_DEPTH_TEST);
 
     for (auto& [shaderID, group] : shaderGroups) {
