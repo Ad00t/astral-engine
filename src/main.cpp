@@ -1,3 +1,4 @@
+#include "GLFW/glfw3.h"
 #include "opengl_includes.h"
 #include "graphics/graphics_engine.h"
 #include "graphics/camera.h"
@@ -22,7 +23,7 @@ int main() {
 
     sim.addSimObj(1, // Earth 
         std::make_unique<Sphere>(gEng.getShader("basic"), glm::vec3(0, 0, 1), 6.371e6),
-        std::make_unique<PhysObj>(glm::vec3(1.496e11, 0, 0), glm::vec3(0, 3.0e10, 0), 5.972e24)
+        std::make_unique<PhysObj>(glm::vec3(1.496e11, 0, 0), glm::vec3(0, 3.0e4, 0), 5.972e24)
     );
     
     sim.addSimObj(2, // Moon 
@@ -39,11 +40,9 @@ int main() {
         gui.newFrame();
     
         sim.update(cam, gui.btn_paused ? 0 : dT * gui.slider_sim_speed);
-        if (dT >= 1/60.0) {
-            cam.update(sim.getSimObj(1)->getPhysObj()->pos);
-            lastTime = now;
-        }
-               
+        cam.update(sim.getSimObj(1)->getPhysObj()->pos);
+    
+        gEng.renderScene(cam);
         gui.drawElements();
         gui.render();
         gEng.finishRender();

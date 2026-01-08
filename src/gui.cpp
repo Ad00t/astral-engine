@@ -37,7 +37,7 @@ void GUI::drawElements() {
        btn_paused = !btn_paused; 
     }
     
-    ImGui::SliderFloat("Sim Speed", &slider_sim_speed, 1.0f, 1e6f, "%.3fx", 
+    ImGui::SliderFloat("Sim Speed", &slider_sim_speed, 1.0f, 1e4f, "%.3fx", 
                        ImGuiSliderFlags_None & ~ImGuiSliderFlags_WrapAround);
     
     ImGui::End();

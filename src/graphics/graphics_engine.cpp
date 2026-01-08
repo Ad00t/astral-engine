@@ -29,6 +29,7 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
         exit(EXIT_FAILURE);
     }
     glfwMakeContextCurrent(window);
+    glfwSwapInterval(1); // Enable v-sync
 
     // Load OpenGL with GLAD
     if (!gladLoadGL(glfwGetProcAddress)) {
@@ -45,6 +46,8 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
     );
 
     glViewport(0, 0, initialWidth, initialHeight);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
     printf("Graphics engine initialized\n");
 }
 
@@ -75,10 +78,7 @@ void GraphicsEngine::clear() {
 }
 
 void GraphicsEngine::renderScene(const Camera& cam) {
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_DEPTH_TEST);
-
     for (auto& [shaderID, group] : shaderGroups) {
         glUseProgram(shaderID); 
         for (auto& id : group) {
