@@ -1,10 +1,11 @@
-#ifndef ENGINE_H
-#define ENGINE_H
+#ifndef GRAPHICS_ENGINE_H
+#define GRAPHICS_ENGINE_H
 
 #include "opengl_includes.h"
 #include "graphics/shader.h"
 #include "graphics/camera.h"
 #include "graphics/renderable.h" 
+#include <string>
 #include <unordered_map>
 #include <vector>
 #include <memory>

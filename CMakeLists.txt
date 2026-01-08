@@ -14,12 +14,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(OpenGL_GL_PREFERENCE GLVND)
 
-# GLFW - Installed via: sudo dnf install -y glfw-devel
+# GLFW 
+FetchContent_Declare(
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4
+)
+FetchContent_MakeAvailable(glfw)
 option(GLFW_BUILD_DOCS OFF)
 option(GLFW_BUILD_EXAMPLES OFF)
 option(GLFW_BUILD_TESTS OFF)
 option(GLFW_INSTALL OFF)
-find_package(glfw3 REQUIRED)
 
 # GLAD
 add_library(glad STATIC 
@@ -49,7 +54,6 @@ add_library(imgui_lib
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-    # add backends you want:
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
@@ -57,6 +61,7 @@ target_include_directories(imgui_lib PUBLIC
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
 )
+target_link_libraries(imgui_lib PUBLIC glfw)
 
 # Project
 add_executable(${PROJECT_NAME})

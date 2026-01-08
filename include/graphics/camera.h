@@ -49,6 +49,7 @@ public:
 
     void update() override;
     void update(glm::dvec3 realTarget);
+
     void handleMouseMove(GLFWwindow* win, double x, double y) override;
     void handleMouseButton(GLFWwindow* win, int button, int action, int mods) override;
     void handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) override;

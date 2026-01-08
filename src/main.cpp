@@ -14,7 +14,7 @@ int main() {
     OrbitalCamera cam(gEng.window, 5e7f, 1e6f, 1e22f, 0.01f, 0.01f, 10.0f);
     PhysicsEngine pEng;
     Simulation sim(gEng, pEng);
-
+   
     sim.addSimObj(0, // Sun 
         std::make_unique<Sphere>(gEng.getShader("basic"), glm::vec3(1, 1, 0), 6.957e8),
         std::make_unique<PhysObj>(glm::vec3(0, 0, 0), glm::vec3(0, 0, 0), 1.989e30)
@@ -36,11 +36,13 @@ int main() {
     while (!glfwWindowShouldClose(gEng.window)) {
         double now = glfwGetTime();
         double dT = now - lastTime;   // seconds since last frame
-        lastTime = now;
         gui.newFrame();
-     
+    
         sim.update(cam, gui.btn_paused ? 0 : dT * gui.slider_sim_speed);
-        cam.update(sim.getSimObj(1)->getPhysObj()->pos);
+        if (dT >= 1/60.0) {
+            cam.update(sim.getSimObj(1)->getPhysObj()->pos);
+            lastTime = now;
+        }
                
         gui.drawElements();
         gui.render();

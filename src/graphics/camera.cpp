@@ -2,7 +2,6 @@
 #include "glm/ext/matrix_clip_space.hpp"
 #include "imgui_impl_glfw.h"
 #include "opengl_includes.h"
-#include <GLFW/glfw3.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/string_cast.hpp"
 #include "utils.h"
@@ -78,7 +77,7 @@ void OrbitalCamera::update() {
 
 void OrbitalCamera::update(glm::dvec3 realTarget) {
     glm::vec3 renderTarget = toRender(realTarget);
-
+ 
     position = glm::vec3(
         radius * cos(elevation) * cos(azimuth),
         radius * cos(elevation) * sin(azimuth),
