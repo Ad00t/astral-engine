@@ -9,6 +9,11 @@
 #include <memory>
 
 class SimObj {
+private:
+    int id;
+    std::unique_ptr<Renderable> renderable;
+    std::unique_ptr<PhysObj> physObj;
+
 public:
     SimObj(int id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj);
     ~SimObj() = default;
@@ -28,16 +33,16 @@ public:
     int getID() const;
     Renderable* getRenderable() const;
     PhysObj* getPhysObj() const;
-
-private:
-    int id;
-    std::unique_ptr<Renderable> renderable;
-    std::unique_ptr<PhysObj> physObj;
 };
 
 class Simulation {
+private:
+    std::shared_ptr<GraphicsEngine> gEng;
+    std::shared_ptr<PhysicsEngine> pEng;
+    std::unordered_map<int, SimObj> simObjs;
+
 public:
-    Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng);
+    Simulation(std::shared_ptr<GraphicsEngine> gEng, std::shared_ptr<PhysicsEngine> pEng);
     ~Simulation();
 
     void addSimObj(int id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj);
@@ -46,12 +51,7 @@ public:
     void clear();
 
     // main update loop: steps physObj, syncs objects, and renders
-    void update(const Camera& cam, float deltaTime);
-
-private:
-    GraphicsEngine& gEng;
-    PhysicsEngine& pEng;
-    std::unordered_map<int, SimObj> simObjs;
+    void update(OrbitalCamera& cam, float deltaTime);
 };
 
 #endif // SIMULATION_H

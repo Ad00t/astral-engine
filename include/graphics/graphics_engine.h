@@ -7,13 +7,11 @@
 #include "graphics/renderable.h" 
 #include <string>
 #include <unordered_map>
-#include <vector>
 #include <memory>
 
 class GraphicsEngine {
 private:
     std::unordered_map<int, Renderable*> renderables;
-    std::unordered_map<int, std::vector<int>> shaderGroups;
     std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
 
 public:

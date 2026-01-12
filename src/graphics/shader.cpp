@@ -19,8 +19,9 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath) {
     fShaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
     try {
         // open files
-        vShaderFile.open(vertexPath);
-        fShaderFile.open(fragmentPath);
+        std::string fpPrefix = "resources/shaders/";
+        vShaderFile.open((fpPrefix + vertexPath).c_str());
+        fShaderFile.open((fpPrefix + fragmentPath).c_str());
         std::stringstream vShaderStream, fShaderStream;
         // read file's buffer contents into streams
         vShaderStream << vShaderFile.rdbuf();

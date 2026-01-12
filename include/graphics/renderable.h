@@ -3,53 +3,62 @@
 
 #include "glm/ext/vector_float3.hpp"
 #include "opengl_includes.h"
-#include "graphics/shader.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <memory>
+#include <cstdint>
+
+struct Vertex {
+    glm::vec3 pos;
+    glm::vec3 normal;
+    glm::vec2 uv;   
+};
+
+class GraphicsEngine;
 
 class Renderable {
 protected:
+    std::weak_ptr<GraphicsEngine> gEng;
     GLuint VAO, VBO, EBO;
-    Shader* shader;
     glm::mat4 model;
-    glm::vec3 color;
     GLsizei indexCount;
-
-    void setupMesh(const std::vector<float>& vertices,
-                   const std::vector<unsigned int>& indices);
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    
+    void setupMesh(const std::vector<Vertex>& vertices,
+                   const std::vector<uint32_t>& indices);
 
 public:
-    Renderable(const std::vector<float>& vertices,
-               const std::vector<unsigned int>& indices,
-               Shader* shader,
-               glm::vec3 color);
+    Renderable(std::weak_ptr<GraphicsEngine> gEng);
     virtual ~Renderable();
 
     virtual void draw(const glm::mat4& view, const glm::mat4& projection);
 
     void setModel(const glm::mat4& model);
     glm::mat4& getModel();
-
-    Shader* getShader();
 };
 
 class Cube : public Renderable {
+private:
+    glm::vec3 color;
+
 public:
-    Cube(Shader* shader, glm::vec3 color);
-    Cube(Shader* shader, glm::vec3 color, const glm::mat4& initialModel);
+    Cube(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color);
+
+    void draw(const glm::mat4& view, const glm::mat4& projection) override;
 };
 
 class Sphere : public Renderable {
 private:
     float radius;
+    glm::vec3 color;
 
 public:
-    Sphere(Shader* shader, glm::vec3 color, double realRadius, 
-           unsigned int sectorCount = 36, unsigned int stackCount = 18);
-    Sphere(Shader* shader, glm::vec3 color, double realRadius, const glm::mat4& initialModel,
-           unsigned int sectorCount = 36, unsigned int stackCount = 18);
+    Sphere(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, double realRadius, 
+           int sectorCount = 36, int stackCount = 18);
+    
+    void draw(const glm::mat4& view, const glm::mat4& projection) override;
 };
 
 #endif // RENDERABLE_H
