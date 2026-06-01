@@ -24,6 +24,7 @@ int main() {
     
         sim.update(cam, gui.btn_paused ? 0 : dT * gui.slider_sim_speed);
     
+        gEng->renderScene(cam);
         gui.drawElements();
         gui.render();
         gEng->finishRender();

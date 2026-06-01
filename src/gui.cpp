@@ -10,7 +10,7 @@ GUI::GUI(GLFWwindow* window) {
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, false);
-    ImGui_ImplOpenGL3_Init("#version 430");
+    ImGui_ImplOpenGL3_Init("#version 410");
 }
 
 GUI::~GUI() {
@@ -37,7 +37,7 @@ void GUI::drawElements() {
        btn_paused = !btn_paused; 
     }
     
-    ImGui::SliderFloat("Sim Speed", &slider_sim_speed, 1.0f, 1e4f, "%.3fx", 
+    ImGui::SliderFloat("Sim Speed", &slider_sim_speed, 0, 1e3f, "%.3fx", 
                        ImGuiSliderFlags_None & ~ImGuiSliderFlags_WrapAround);
     
     ImGui::End();
@@ -49,6 +49,8 @@ void GUI::render() {
 }
 
 void GUI::cleanup() {
+    if (!initialized) return;
+    initialized = false;
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();

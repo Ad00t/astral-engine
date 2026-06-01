@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "opengl_includes.h"
 #include "graphics/shader.h"
+#define STB_IMAGE_IMPLEMENTATION
 #include "graphics/stb_image.h"
 #include <vector>
 #include <glm/gtc/type_ptr.hpp>
@@ -91,13 +92,13 @@ Cube::Cube(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color)
 void Cube::draw(const glm::mat4& view, const glm::mat4& projection) {
     std::shared_ptr<GraphicsEngine> lgEng = gEng.lock();
     if (!lgEng) return;
-    Shader* baseShader = lgEng->getShader("basic");
-    glUseProgram(baseShader->ID);
+    Shader* basicShader = lgEng->getShader("basic");
+    glUseProgram(basicShader->ID);
     
-    GLint modelLoc = glGetUniformLocation(baseShader->ID, "model");
-    GLint viewLoc  = glGetUniformLocation(baseShader->ID, "view");
-    GLint projLoc  = glGetUniformLocation(baseShader->ID, "projection");
-    GLint colorLoc = glGetUniformLocation(baseShader->ID, "objectColor");
+    GLint modelLoc = glGetUniformLocation(basicShader->ID, "model");
+    GLint viewLoc  = glGetUniformLocation(basicShader->ID, "view");
+    GLint projLoc  = glGetUniformLocation(basicShader->ID, "projection");
+    GLint colorLoc = glGetUniformLocation(basicShader->ID, "objectColor");
     
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
@@ -160,13 +161,13 @@ Sphere::Sphere(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, double realR
 void Sphere::draw(const glm::mat4& view, const glm::mat4& projection) {
     std::shared_ptr<GraphicsEngine> lgEng = gEng.lock();
     if (!lgEng) return;
-    Shader* baseShader = lgEng->getShader("basic");
-    glUseProgram(baseShader->ID);
+    Shader* basicShader = lgEng->getShader("basic");
+    glUseProgram(basicShader->ID);
 
-    GLint modelLoc = glGetUniformLocation(baseShader->ID, "model");
-    GLint viewLoc  = glGetUniformLocation(baseShader->ID, "view");
-    GLint projLoc  = glGetUniformLocation(baseShader->ID, "projection");
-    GLint colorLoc = glGetUniformLocation(baseShader->ID, "objectColor");
+    GLint modelLoc = glGetUniformLocation(basicShader->ID, "model");
+    GLint viewLoc  = glGetUniformLocation(basicShader->ID, "view");
+    GLint projLoc  = glGetUniformLocation(basicShader->ID, "projection");
+    GLint colorLoc = glGetUniformLocation(basicShader->ID, "objectColor");
     
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));

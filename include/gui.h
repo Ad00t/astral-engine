@@ -2,6 +2,7 @@
 
 class GUI {
 public:
+    bool initialized = true;
     bool btn_paused = true;
     float slider_sim_speed = 1.0f;
 

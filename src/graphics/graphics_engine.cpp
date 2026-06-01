@@ -18,8 +18,11 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
     }
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
 
     window = glfwCreateWindow(initialWidth, initialHeight, title.c_str(), NULL, NULL);
     if (!window) {
@@ -28,7 +31,7 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
         exit(EXIT_FAILURE);
     }
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1); // Enable v-sync
+    // glfwSwapInterval(1); // Enable v-sync
 
     // Load OpenGL with GLAD
     if (!gladLoadGL(glfwGetProcAddress)) {
@@ -41,7 +44,9 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
     
     shaders["basic"] = std::make_unique<Shader>("basic.vert", "basic.frag");
 
-    glViewport(0, 0, initialWidth, initialHeight);
+    int fbWidth, fbHeight;
+    glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+    glViewport(0, 0, fbWidth, fbHeight);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
     printf("Graphics engine initialized\n");
