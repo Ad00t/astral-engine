@@ -20,7 +20,8 @@ public:
     virtual ~PhysObj() = default;
 
     void applyForce(const glm::dvec3& force);
-    void integrate(double dT);
+    void integratePos(double dT);
+    void integrateVel(double dT);
 };
 
 class PhysicsEngine {
@@ -35,7 +36,7 @@ public:
     void removePhysObj(int id);
     void clear();
 
-    // updates physics state of all objects 
+    void computeForces();
     void updateAll(float dT);
 };
 

@@ -21,7 +21,11 @@ int main() {
         double now = glfwGetTime();
         double dT = now - lastTime;   // seconds since last frame
         gui.newFrame();
-    
+   
+        // if (dT >= 1/30.0f) {
+        //     sim.update(cam, gui.btn_paused ? 0 : dT * gui.slider_sim_speed);
+        //     lastTime = now;
+        // }
         sim.update(cam, gui.btn_paused ? 0 : dT * gui.slider_sim_speed);
     
         gEng->renderScene(cam);

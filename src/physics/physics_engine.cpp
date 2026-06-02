@@ -19,10 +19,12 @@ void PhysObj::applyForce(const glm::dvec3& force) {
         acc_new += force / mass;
 }
 
-void PhysObj::integrate(double dT) {
-    // Velocity Verlet integration 
-    pos = pos + vel*dT + 0.5*acc*pow(dT, 2);
-    vel = vel + 0.5*(acc + acc_new)*dT;
+void PhysObj::integratePos(double dT) {
+    pos = pos + vel * dT + 0.5 * acc * dT * dT;
+}
+
+void PhysObj::integrateVel(double dT) {
+    vel = vel + 0.5 * (acc + acc_new) * dT;
     acc = acc_new;
     acc_new = glm::dvec3(0.0);
 }
@@ -47,29 +49,34 @@ void PhysicsEngine::clear() {
     physObjs.clear();
 }
 
-// Main physics loop logic
-void PhysicsEngine::updateAll(float dT) {
+void PhysicsEngine::computeForces() {
     for (auto it1 = physObjs.begin(); it1 != physObjs.end(); ++it1) {
         auto& [id1, obj1] = *it1;
         auto it2 = it1;
         ++it2;
         for (; it2 != physObjs.end(); ++it2) {
             auto& [id2, obj2] = *it2;
-            
+
             glm::dvec3 dir = obj2->pos - obj1->pos;
             double r = glm::length(dir);
             if (r < 1e-4) continue;
-            glm::dvec3 F_g = (G * obj1->mass * obj2->mass / pow(r, 2)) * glm::normalize(dir);
-            
-            // std::cout << id1 << "->" << id2 << " r:" << r << " F_g:" << glm::to_string(F_g) << " mag:" << (G * obj1->mass * obj2->mass / pow(r, 2)) << " dir:" << glm::to_string(dir) << std::endl;
+            glm::dvec3 F_g = (G * obj1->mass * obj2->mass / (r * r)) * glm::normalize(dir);
+
             obj1->applyForce(F_g);
             obj2->applyForce(-F_g);
-        } 
+        }
     }
-    
+}
 
-    for (auto& [id, obj] : physObjs) {
-        obj->integrate(dT);
-        // std::cout << "id:" << id << " pos:" << glm::to_string(obj->pos) << " vel:" << glm::to_string(obj->vel) << " acc:" << glm::to_string(obj->acc) << std::endl;
-    }
+void PhysicsEngine::updateAll(float dT) {
+    // 1. Update positions using current acc
+    for (auto& [id, obj] : physObjs)
+        obj->integratePos(dT);
+
+    // 2. Compute forces at new positions → acc_new
+    computeForces();
+
+    // 3. Update velocities using (acc + acc_new) / 2, then swap
+    for (auto& [id, obj] : physObjs)
+        obj->integrateVel(dT);
 }

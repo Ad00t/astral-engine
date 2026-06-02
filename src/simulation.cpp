@@ -41,10 +41,16 @@ Simulation::Simulation(std::shared_ptr<GraphicsEngine> gEng, std::shared_ptr<Phy
         std::make_unique<PhysObj>(glm::vec3(1.496e11, 0, 0), glm::vec3(0, 3.0e4, 0), 5.972e24)
     );
     
-    addSimObj(2, // Moon 
+    addSimObj(2, // Moon
         std::make_unique<Sphere>(gEng, glm::vec3(1, 1, 1), 1.7375e6),
         std::make_unique<PhysObj>(glm::vec3(1.496e11 + 3.84e8, 0, 0), glm::vec3(0, 3.0e4 + 1.022e3, 0), 7.35e22)
     );
+
+    pEng->computeForces();
+    for (auto& [id, simObj] : simObjs)
+        simObj.getPhysObj()->acc = simObj.getPhysObj()->acc_new;
+    for (auto& [id, simObj] : simObjs)
+        simObj.getPhysObj()->acc_new = glm::dvec3(0.0);
 }
 
 Simulation::~Simulation() {
