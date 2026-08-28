@@ -53,6 +53,7 @@ Simulation::Simulation(std::shared_ptr<GraphicsEngine> gEng, std::shared_ptr<Phy
         simObj.getPhysObj()->acc_new = glm::dvec3(0.0);
 }
 
+Simulation::Simulation() {}
 Simulation::~Simulation() {
     clear();
 }
@@ -83,11 +84,9 @@ void Simulation::clear() {
     simObjs.clear();
 }
 
-void Simulation::update(OrbitalCamera& cam, float deltaTime) {
+void Simulation::update(float deltaTime) {
     pEng->updateAll(deltaTime);
     for (auto& [id, simObj] : simObjs) {
         simObj.syncPhysicsToRender();
     }
-    cam.update(getSimObj(1)->getPhysObj()->pos);
-    gEng->renderScene(cam);
 }

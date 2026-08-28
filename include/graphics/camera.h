@@ -7,6 +7,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <cmath>
 
+class SimObj;
+
 class Camera {
 public:
     int width, height;
@@ -21,20 +23,6 @@ public:
     glm::mat4 view;
     glm::mat4 projection; 
 
-    Camera(GLFWwindow* window, glm::vec3 position, float orbitSpeed, float panSpeed, float zoomSpeed);
-    ~Camera();
-
-    virtual void update();
-    void cleanup();
-
-    virtual void handleMouseMove(GLFWwindow* win, double x, double y);
-    virtual void handleMouseButton(GLFWwindow* win, int button, int action, int mods);
-    virtual void handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset);
-    virtual void handleKeyboard(GLFWwindow* win, int key, int scancode, int action, int mods);
-};
-
-class OrbitalCamera : public Camera {
-public:
     float radius;
     float minRadius, maxRadius;
 
@@ -44,15 +32,20 @@ public:
     float azimuth = 0.0f;
     float elevation = 0.0f;
 
-    OrbitalCamera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed);
-    ~OrbitalCamera();
+    const SimObj* target;
 
-    void update() override;
-    void update(glm::dvec3 realTarget);
+    Camera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed);
+    Camera();
+    ~Camera();
+    Camera(const Camera&) = delete;
 
-    void handleMouseMove(GLFWwindow* win, double x, double y) override;
-    void handleMouseButton(GLFWwindow* win, int button, int action, int mods) override;
-    void handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) override;
+    void update();
+    void cleanup();
+
+    void handleMouseMove(GLFWwindow* win, double x, double y);
+    void handleMouseButton(GLFWwindow* win, int button, int action, int mods);
+    void handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset);
+    void handleKeyboard(GLFWwindow* win, int key, int scancode, int action, int mods);
 };
 
 #endif

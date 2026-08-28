@@ -7,6 +7,7 @@ public:
     float slider_sim_speed = 1.0f;
 
     GUI(GLFWwindow* window);
+    GUI();
     ~GUI();
 
     void newFrame();

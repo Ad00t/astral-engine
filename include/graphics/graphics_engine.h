@@ -5,6 +5,7 @@
 #include "graphics/shader.h"
 #include "graphics/camera.h"
 #include "graphics/renderable.h" 
+#include "simulation.h"
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -17,6 +18,7 @@ private:
 public:
     GLFWwindow* window;
     std::string title;
+    std::unique_ptr<Camera> cam;
 
     GraphicsEngine(std::string title, int initialWidth, int initialHeight);
     ~GraphicsEngine();
@@ -25,7 +27,7 @@ public:
     void removeRenderable(int id);
     void clear();
 
-    void renderScene(const Camera& cam); 
+    void renderScene(); 
     void finishRender();
     void cleanup();
 

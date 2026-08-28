@@ -1,12 +1,12 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
-#include "graphics/graphics_engine.h"
-#include "graphics/camera.h"
 #include "graphics/renderable.h"
 #include "physics/physics_engine.h"
 #include <unordered_map>
 #include <memory>
+
+class GraphicsEngine;
 
 class SimObj {
 private:
@@ -43,6 +43,7 @@ private:
 
 public:
     Simulation(std::shared_ptr<GraphicsEngine> gEng, std::shared_ptr<PhysicsEngine> pEng);
+    Simulation();
     ~Simulation();
 
     void addSimObj(int id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj);
@@ -51,7 +52,7 @@ public:
     void clear();
 
     // main update loop: steps physObj, syncs objects, and renders
-    void update(OrbitalCamera& cam, float deltaTime);
+    void update(float deltaTime);
 };
 
 #endif // SIMULATION_H

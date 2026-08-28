@@ -69,14 +69,11 @@ void PhysicsEngine::computeForces() {
 }
 
 void PhysicsEngine::updateAll(float dT) {
-    // 1. Update positions using current acc
     for (auto& [id, obj] : physObjs)
         obj->integratePos(dT);
 
-    // 2. Compute forces at new positions → acc_new
     computeForces();
 
-    // 3. Update velocities using (acc + acc_new) / 2, then swap
     for (auto& [id, obj] : physObjs)
         obj->integrateVel(dT);
 }

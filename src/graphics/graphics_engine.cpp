@@ -31,7 +31,7 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
         exit(EXIT_FAILURE);
     }
     glfwMakeContextCurrent(window);
-    // glfwSwapInterval(1); // Enable v-sync
+    glfwSwapInterval(0); 
 
     // Load OpenGL with GLAD
     if (!gladLoadGL(glfwGetProcAddress)) {
@@ -50,6 +50,8 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
     printf("Graphics engine initialized\n");
+
+    cam = std::make_unique<Camera>(window, 5e7f, 1e6f, 1e22f, 0.01f, 0.01f, 10.0f);
 }
 
 GraphicsEngine::~GraphicsEngine() {
@@ -68,10 +70,11 @@ void GraphicsEngine::clear() {
     renderables.clear();
 }
 
-void GraphicsEngine::renderScene(const Camera& cam) {
+void GraphicsEngine::renderScene() {
+    cam->update();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     for (auto& [id, r] : renderables) {
-        r->draw(cam.view, cam.projection);
+        r->draw(cam->view, cam->projection);
     }
 };
 
@@ -81,6 +84,7 @@ void GraphicsEngine::finishRender() {
 }
 
 void GraphicsEngine::cleanup() {
+    cam->cleanup();
     glfwDestroyWindow(window);
     glfwTerminate();
 }

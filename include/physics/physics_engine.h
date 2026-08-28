@@ -32,7 +32,7 @@ public:
     PhysicsEngine();
     ~PhysicsEngine();
 
-    void addPhysObj(int id, PhysObj*);
+    void addPhysObj(int id, PhysObj* physObj);
     void removePhysObj(int id);
     void clear();
 

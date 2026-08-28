@@ -13,6 +13,10 @@ GUI::GUI(GLFWwindow* window) {
     ImGui_ImplOpenGL3_Init("#version 410");
 }
 
+GUI::GUI() {
+
+}
+
 GUI::~GUI() {
     cleanup();
 }
@@ -37,7 +41,7 @@ void GUI::drawElements() {
        btn_paused = !btn_paused; 
     }
     
-    ImGui::SliderFloat("Sim Speed", &slider_sim_speed, 0, 1e4f, "%.3fx", 
+    ImGui::SliderFloat("Sim Speed", &slider_sim_speed, 0, 1e5f, "%.3fx", 
                        ImGuiSliderFlags_None & ~ImGuiSliderFlags_WrapAround);
     
     ImGui::End();

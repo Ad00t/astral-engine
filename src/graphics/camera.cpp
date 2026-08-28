@@ -9,9 +9,12 @@
 #include <cmath>
 #include <iostream>
 #include <string>
+#include <simulation.h>
 
-Camera::Camera(GLFWwindow* window, glm::vec3 position = glm::vec3(0.0f), float orbitSpeed = 0.01f, float panSpeed = 0.01f, float zoomSpeed = 1.0f)
-    : window(window), position(position), orbitSpeed(orbitSpeed), panSpeed(panSpeed), zoomSpeed(zoomSpeed) {
+Camera::Camera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed)
+    : window(window), position(glm::vec3(0.0f)), orbitSpeed(orbitSpeed), panSpeed(panSpeed), zoomSpeed(zoomSpeed), target(nullptr),
+      radius(toRender(initialRealRadius)), minRadius(toRender(minRealRadius)), maxRadius(toRender(maxRealRadius)) {
+
     glfwGetWindowSize(window, &width, &height);
     glfwSetWindowUserPointer(window, this);
     glfwSetMouseButtonCallback(window, [](GLFWwindow* win, int button, int action, int mods) {
@@ -49,34 +52,14 @@ Camera::Camera(GLFWwindow* window, glm::vec3 position = glm::vec3(0.0f), float o
     });
 }
 
+Camera::Camera() {}
 Camera::~Camera() {
     cleanup();
 }
-void Camera::update() {}
-void Camera::cleanup() {
-    glfwSetMouseButtonCallback(window, nullptr);
-    glfwSetCursorPosCallback(window, nullptr);
-    glfwSetScrollCallback(window, nullptr);
-    glfwSetKeyCallback(window, nullptr);
-    glfwSetFramebufferSizeCallback(window, nullptr);
-}
 
-void Camera::handleMouseMove(GLFWwindow* win, double x, double y) {}
-void Camera::handleMouseButton(GLFWwindow* win, int button, int action, int mods) {}
-void Camera::handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) {}
-void Camera::handleKeyboard(GLFWwindow* win, int key, int scancode, int action, int mods) {}
-
-OrbitalCamera::OrbitalCamera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed)
-    : Camera(window, glm::vec3(0.0f), orbitSpeed, panSpeed, zoomSpeed), radius(toRender(initialRealRadius)), minRadius(toRender(minRealRadius)), maxRadius(toRender(maxRealRadius)) {}
-
-OrbitalCamera::~OrbitalCamera() {}
-
-void OrbitalCamera::update() {
-    update(glm::vec3(0.0f));
-}
-
-void OrbitalCamera::update(glm::dvec3 realTarget) {
-    glm::vec3 renderTarget = toRender(realTarget);
+void Camera::update() {
+    if (target == nullptr) return;
+    glm::vec3 renderTarget = toRender(target->getPhysObj()->pos);
  
     position = glm::vec3(
         radius * cos(elevation) * cos(azimuth),
@@ -90,7 +73,15 @@ void OrbitalCamera::update(glm::dvec3 realTarget) {
     projection = glm::infinitePerspective(glm::radians(60.0f), float(width) / float(height), 0.1f);
 }
 
-void OrbitalCamera::handleMouseMove(GLFWwindow* win, double x, double y) {
+void Camera::cleanup() {
+    glfwSetMouseButtonCallback(window, nullptr);
+    glfwSetCursorPosCallback(window, nullptr);
+    glfwSetScrollCallback(window, nullptr);
+    glfwSetKeyCallback(window, nullptr);
+    glfwSetFramebufferSizeCallback(window, nullptr);
+}
+
+void Camera::handleMouseMove(GLFWwindow* win, double x, double y) {
     float dx = float(x - lastX);
     float dy = float(y - lastY);
 
@@ -104,7 +95,7 @@ void OrbitalCamera::handleMouseMove(GLFWwindow* win, double x, double y) {
     lastY = y;
 }
 
-void OrbitalCamera::handleMouseButton(GLFWwindow* win, int button, int action, int mods) {
+void Camera::handleMouseButton(GLFWwindow* win, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
         if (action == GLFW_PRESS) {
             dragging = true;
@@ -115,6 +106,10 @@ void OrbitalCamera::handleMouseButton(GLFWwindow* win, int button, int action, i
     }
 }
 
-void OrbitalCamera::handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) { 
+void Camera::handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) { 
     radius = glm::clamp(radius - (float) yoffset*zoomSpeed, minRadius, maxRadius);
+}
+
+void Camera::handleKeyboard(GLFWwindow* win, int key, int scancode, int action, int mods) {
+
 }
