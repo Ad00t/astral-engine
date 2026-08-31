@@ -29,7 +29,7 @@ std::mutex stateMutex;
 std::atomic<bool> runSim;
 std::thread simThread;
 
-void sim_thread_func() {
+void simThreadFunc() {
     auto lastUpdateTime = std::chrono::steady_clock::now();
     while (runSim.load()) {
         simUpdateLimiter.startUpdate();
@@ -56,7 +56,7 @@ int main() {
     gEng->cam->target = sim->getSimObj(1);
    
     runSim.store(true);
-    simThread = std::thread(sim_thread_func);
+    simThread = std::thread(simThreadFunc);
 
     while (!glfwWindowShouldClose(gEng->window)) {
         graphicsUpdateLimiter.startUpdate(); 
