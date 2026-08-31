@@ -6,6 +6,7 @@
 #include "simulation.h"
 #include "utils.h"
 #include "gui.h"
+#include "update_limiter.h"
 #include <cstdio>
 #include <memory>
 #include <thread>
@@ -21,26 +22,25 @@ std::shared_ptr<PhysicsEngine> pEng;
 std::shared_ptr<Simulation> sim;
 std::shared_ptr<GUI> gui;
 
-std::mutex state_mutex;
-std::atomic<bool> run_sim;
-std::thread sim_thread;
+UpdateLimiter graphicsUpdateLimiter;
+UpdateLimiter simUpdateLimiter;
+
+std::mutex stateMutex;
+std::atomic<bool> runSim;
+std::thread simThread;
 
 void sim_thread_func() {
-    auto last_update_time = std::chrono::steady_clock::now();
-    while (run_sim.load()) {
-        auto frame_start = std::chrono::steady_clock::now();
-        double dT = std::chrono::duration<double>(frame_start - last_update_time).count();
-        last_update_time = frame_start;
+    auto lastUpdateTime = std::chrono::steady_clock::now();
+    while (runSim.load()) {
+        simUpdateLimiter.startUpdate();
+        double dT = std::chrono::duration<double>(simUpdateLimiter.updateStart - lastUpdateTime).count();
+        lastUpdateTime = simUpdateLimiter.updateStart;
         
-        std::unique_lock<std::mutex> lock(state_mutex);
+        std::unique_lock<std::mutex> lock(stateMutex);
         sim->update(gui->btn_paused ? 0 : dT * gui->slider_sim_speed);
         lock.unlock();
 
-        auto frame_end = std::chrono::steady_clock::now();
-        double elapsed = std::chrono::duration<double>(frame_end - frame_start).count();
-        if (elapsed < 1.0/SIM_MAX_FPS) {
-            std::this_thread::sleep_for(std::chrono::duration<double>(1.0/SIM_MAX_FPS - elapsed));
-        }
+        simUpdateLimiter.endUpdate();
     }
 }
 
@@ -50,34 +50,31 @@ int main() {
     sim = std::make_shared<Simulation>(gEng, pEng);
     gui = std::make_shared<GUI>(gEng->window);
 
+    graphicsUpdateLimiter = UpdateLimiter(GRAPHICS_MAX_FPS);
+    simUpdateLimiter = UpdateLimiter(SIM_MAX_FPS);
+
     gEng->cam->target = sim->getSimObj(1);
    
-    run_sim.store(true);
-    sim_thread = std::thread(sim_thread_func);
+    runSim.store(true);
+    simThread = std::thread(sim_thread_func);
 
     while (!glfwWindowShouldClose(gEng->window)) {
-        auto frame_start = std::chrono::steady_clock::now();
-        
+        graphicsUpdateLimiter.startUpdate(); 
         gui->newFrame();
 
-        std::unique_lock<std::mutex> lock(state_mutex);
+        std::unique_lock<std::mutex> lock(stateMutex);
         gEng->renderScene();
         lock.unlock();
 
         gui->drawElements();
         gui->render();
         gEng->finishRender();
-
-        auto frame_end = std::chrono::steady_clock::now();
-        double elapsed = std::chrono::duration<double>(frame_end - frame_start).count();
-        if (elapsed < 1.0/GRAPHICS_MAX_FPS) {
-            std::this_thread::sleep_for(std::chrono::duration<double>(1.0/GRAPHICS_MAX_FPS- elapsed));
-        }
+        graphicsUpdateLimiter.endUpdate();
     }
 
-    run_sim.store(false);
-    if (sim_thread.joinable()) {
-        sim_thread.join();
+    runSim.store(false);
+    if (simThread.joinable()) {
+        simThread.join();
     }
 
     sim->clear(); 

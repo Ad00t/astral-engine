@@ -83,6 +83,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glm
     imgui_lib
     ${CMAKE_DL_LIBS} # Needed for glad - https://stackoverflow.com/a/56842079/2394163
+    $<$<PLATFORM_ID:Windows>:winmm>
 )
 add_definitions(-DGLFW_INCLUDE_NONE)
 set_target_properties(${PROJECT_NAME} PROPERTIES

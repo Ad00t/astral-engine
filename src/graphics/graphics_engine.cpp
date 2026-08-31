@@ -9,6 +9,11 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <cstdio>
 #include <memory>
+#if defined(_WIN32)
+#include <windows.h>
+#include <timeapi.h>
+#pragma comment(lib, "winmm.lib")
+#endif
 
 GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialHeight)
     : title(title) {
@@ -49,9 +54,13 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
     glViewport(0, 0, fbWidth, fbHeight);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
-    printf("Graphics engine initialized\n");
+
+#if defined(_WIN32)
+    timeBeginPeriod(1); // Sets the minimum OS sleep granularity to 1ms
+#endif
 
     cam = std::make_unique<Camera>(window, 5e7f, 1e6f, 1e22f, 0.01f, 0.01f, 10.0f);
+    printf("Graphics engine initialized\n");
 }
 
 GraphicsEngine::~GraphicsEngine() {
@@ -85,6 +94,9 @@ void GraphicsEngine::finishRender() {
 
 void GraphicsEngine::cleanup() {
     cam->cleanup();
+#if defined(_WIN32)
+    timeEndPeriod(1); // Clean up before exiting
+#endif
     glfwDestroyWindow(window);
     glfwTerminate();
 }
