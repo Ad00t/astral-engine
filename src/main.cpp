@@ -22,9 +22,6 @@ std::shared_ptr<PhysicsEngine> pEng;
 std::shared_ptr<Simulation> sim;
 std::shared_ptr<GUI> gui;
 
-UpdateLimiter graphicsUpdateLimiter;
-UpdateLimiter simUpdateLimiter;
-
 std::mutex stateMutex;
 std::atomic<bool> runSim;
 std::thread simThread;
@@ -32,26 +29,23 @@ std::thread simThread;
 void simThreadFunc() {
     auto lastUpdateTime = std::chrono::steady_clock::now();
     while (runSim.load()) {
-        simUpdateLimiter.startUpdate();
-        double dT = std::chrono::duration<double>(simUpdateLimiter.updateStart - lastUpdateTime).count();
-        lastUpdateTime = simUpdateLimiter.updateStart;
+        sim->updateLimiter.startUpdate();
+        double dT = std::chrono::duration<double>(sim->updateLimiter.updateStart - lastUpdateTime).count();
+        lastUpdateTime = sim->updateLimiter.updateStart;
         
         std::unique_lock<std::mutex> lock(stateMutex);
         sim->update(gui->btn_paused ? 0 : dT * gui->slider_sim_speed);
         lock.unlock();
 
-        simUpdateLimiter.endUpdate();
+        sim->updateLimiter.endUpdate();
     }
 }
 
 int main() {
-    gEng = std::make_shared<GraphicsEngine>("Astral Engine v1.0.0", 1600, 900);
+    gEng = std::make_shared<GraphicsEngine>("Astral Engine v1.0.0", 1600, 900, GRAPHICS_MAX_FPS);
     pEng = std::make_shared<PhysicsEngine>();
-    sim = std::make_shared<Simulation>(gEng, pEng);
+    sim = std::make_shared<Simulation>(gEng, pEng, SIM_MAX_FPS);
     gui = std::make_shared<GUI>(gEng->window);
-
-    graphicsUpdateLimiter = UpdateLimiter(GRAPHICS_MAX_FPS);
-    simUpdateLimiter = UpdateLimiter(SIM_MAX_FPS);
 
     gEng->cam->target = sim->getSimObj(1);
    
@@ -59,7 +53,7 @@ int main() {
     simThread = std::thread(simThreadFunc);
 
     while (!glfwWindowShouldClose(gEng->window)) {
-        graphicsUpdateLimiter.startUpdate(); 
+        gEng->updateLimiter.startUpdate(); 
         gui->newFrame();
 
         std::unique_lock<std::mutex> lock(stateMutex);
@@ -69,7 +63,7 @@ int main() {
         gui->drawElements();
         gui->render();
         gEng->finishRender();
-        graphicsUpdateLimiter.endUpdate();
+        gEng->updateLimiter.endUpdate();
     }
 
     runSim.store(false);

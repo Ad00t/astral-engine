@@ -3,6 +3,7 @@
 
 #include "graphics/renderable.h"
 #include "physics/physics_engine.h"
+#include "update_limiter.h"
 #include <unordered_map>
 #include <memory>
 
@@ -42,7 +43,9 @@ private:
     std::unordered_map<int, SimObj> simObjs;
 
 public:
-    Simulation(std::shared_ptr<GraphicsEngine> gEng, std::shared_ptr<PhysicsEngine> pEng);
+    UpdateLimiter updateLimiter;
+
+    Simulation(std::shared_ptr<GraphicsEngine> gEng, std::shared_ptr<PhysicsEngine> pEng, double maxUpdateRate);
     Simulation();
     ~Simulation();
 
@@ -51,7 +54,7 @@ public:
     const SimObj* getSimObj(int id) const;
     void clear();
 
-    // main update loop: steps physObj, syncs objects, and renders
+    // step physObjs and sync to renderables
     void update(float deltaTime);
 };
 

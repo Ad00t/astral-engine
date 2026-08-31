@@ -65,6 +65,10 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath) {
 Shader::Shader() {}
 Shader::~Shader() {}
 
+void Shader::use() {
+    glUseProgram(ID);
+}
+
 // utility uniform functions
 // ------------------------------------------------------------------------
 void Shader::setBool(const std::string &name, bool value) const {         

@@ -16,8 +16,15 @@
 #define offsetof(t, d) __builtin_offsetof(t, d)
 #endif
 
-Renderable::Renderable(std::weak_ptr<GraphicsEngine> gEng)
-    : gEng(gEng), VAO(0), VBO(0), EBO(0), model(glm::mat4(1.0f)), indexCount(0), vertices(std::vector<Vertex>()), indices(std::vector<uint32_t>()) {}
+Renderable::Renderable(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture)
+    : gEng(gEng), VAO(0), VBO(0), EBO(0), color(color), model(glm::mat4(1.0f)), indexCount(0), vertices(std::vector<Vertex>()), indices(std::vector<uint32_t>()) {
+    textureID = -1;
+    std::shared_ptr<GraphicsEngine> lgEng = gEng.lock();
+    if (!lgEng) return;
+    if (!texture.empty()) {
+        textureID = lgEng->getTextureID(texture);
+    }
+}
 
 Renderable::~Renderable() {
     glDeleteVertexArrays(1, &VAO);
@@ -84,26 +91,21 @@ static const std::vector<uint32_t> cubeIndices = {
     0,1,5, 5,4,0
 };
 
-Cube::Cube(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color)
-    : Renderable(gEng), color(color) {
+Cube::Cube(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture)
+    : Renderable(gEng, color, texture) {
     setupMesh(cubeVertices, cubeIndices);
 }
 
 void Cube::draw(const glm::mat4& view, const glm::mat4& projection) {
     std::shared_ptr<GraphicsEngine> lgEng = gEng.lock();
     if (!lgEng) return;
-    Shader* basicShader = lgEng->getShader("basic");
-    glUseProgram(basicShader->ID);
+    Shader* simobjShader = lgEng->getShader("simobj");
+    glUseProgram(simobjShader->ID);
     
-    GLint modelLoc = glGetUniformLocation(basicShader->ID, "model");
-    GLint viewLoc  = glGetUniformLocation(basicShader->ID, "view");
-    GLint projLoc  = glGetUniformLocation(basicShader->ID, "projection");
-    GLint colorLoc = glGetUniformLocation(basicShader->ID, "objectColor");
-    
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-    glUniform3f(colorLoc, color[0], color[1], color[2]);
+    simobjShader->setMat4("model", model);
+    simobjShader->setMat4("view", view);
+    simobjShader->setMat4("projection", projection);
+    simobjShader->setVec4("uMaterialColor", glm::vec4(color, 1.0)); 
     
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
@@ -113,19 +115,32 @@ void Cube::draw(const glm::mat4& view, const glm::mat4& projection) {
 // SPHERE
 
 // helper to generate sphere vertices/indices
-static void generateSphere(float radius, uint32_t sectorCount, uint32_t stackCount, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
-    float x, y, z, xy;                              // vertex position
+static void generateSphere(float radius, uint32_t sectorCount, uint32_t stackCount,
+                            std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
+    float x, y, z, xy;
+    float nx, ny, nz, lengthInv = 1.0f / radius;
+    float u, v;
 
-    for (int i = 0; i <= stackCount; ++i) {
-        float stackAngle = M_PI / 2 - i * M_PI / stackCount; // from pi/2 to -pi/2
+    for (uint32_t i = 0; i <= stackCount; ++i) {
+        float stackAngle = M_PI / 2 - i * M_PI / stackCount;
         xy = radius * cosf(stackAngle);
-        z = radius * sinf(stackAngle);
+        z  = radius * sinf(stackAngle);
 
-        for (int j = 0; j <= sectorCount; ++j) {
-            float sectorAngle = j * 2 * M_PI / sectorCount; // 0 to 2pi
+        for (uint32_t j = 0; j <= sectorCount; ++j) {
+            float sectorAngle = j * 2 * M_PI / sectorCount;
             x = xy * cosf(sectorAngle);
             y = xy * sinf(sectorAngle);
-            vertices.push_back({ glm::vec3(x, y, z) });
+
+            // normal = position on a sphere centered at origin, normalized
+            nx = x * lengthInv;
+            ny = y * lengthInv;
+            nz = z * lengthInv;
+
+            // uv
+            u = (float)j / sectorCount;
+            v = (float)i / stackCount;
+
+            vertices.push_back({ glm::vec3(x, y, z), glm::vec3(nx, ny, nz), glm::vec2(u, v) });
         }
     }
 
@@ -150,8 +165,8 @@ static void generateSphere(float radius, uint32_t sectorCount, uint32_t stackCou
     }
 }
 
-Sphere::Sphere(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, double realRadius, int sectorCount, int stackCount)
-    : Renderable(gEng), color(color), radius(toRender(realRadius)) {
+Sphere::Sphere(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture, double realRadius, int sectorCount, int stackCount)
+    : Renderable(gEng, color, texture), radius(toRender(realRadius)) {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     generateSphere(radius, sectorCount, stackCount, vertices, indices);
@@ -161,19 +176,21 @@ Sphere::Sphere(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, double realR
 void Sphere::draw(const glm::mat4& view, const glm::mat4& projection) {
     std::shared_ptr<GraphicsEngine> lgEng = gEng.lock();
     if (!lgEng) return;
-    Shader* basicShader = lgEng->getShader("basic");
-    glUseProgram(basicShader->ID);
+    Shader* simobjShader = lgEng->getShader("simobj");
+    simobjShader->use();
 
-    GLint modelLoc = glGetUniformLocation(basicShader->ID, "model");
-    GLint viewLoc  = glGetUniformLocation(basicShader->ID, "view");
-    GLint projLoc  = glGetUniformLocation(basicShader->ID, "projection");
-    GLint colorLoc = glGetUniformLocation(basicShader->ID, "objectColor");
-    
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-    glUniform3f(colorLoc, color[0], color[1], color[2]);
-    
+    simobjShader->setMat4("model", model);
+    simobjShader->setMat4("view", view);
+    simobjShader->setMat4("projection", projection);
+    simobjShader->setVec4("uMaterialColor", glm::vec4(color, 1.0)); 
+
+    simobjShader->setBool("uUseTexture", textureID != -1);
+    simobjShader->setInt("uTextureMap", 0);   
+    if (textureID != -1) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+    }
+
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);

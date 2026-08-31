@@ -3,6 +3,8 @@
 #include "graphics/shader.h"
 #include "graphics/camera.h"
 #include "graphics/renderable.h"
+#include "update_limiter.h"
+#include "graphics/stb_image.h"
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -15,8 +17,8 @@
 #pragma comment(lib, "winmm.lib")
 #endif
 
-GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialHeight)
-    : title(title) {
+GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialHeight, double maxUpdateRate)
+    : title(title), updateLimiter(maxUpdateRate) {
     if (!glfwInit()) {
         fprintf(stderr, "GLFW init failed\n");
         exit(EXIT_FAILURE);
@@ -46,8 +48,15 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
         exit(EXIT_FAILURE);
     }
     printf("OpenGL %s\n", glGetString(GL_VERSION));
-    
-    shaders["basic"] = std::make_unique<Shader>("basic.vert", "basic.frag");
+   
+    // Load shaders
+    shaders["simobj"] = std::make_unique<Shader>("simobj.vert", "simobj.frag");
+
+    // Load textures
+    // stbi_set_flip_vertically_on_load(true);
+    loadTexture("sun_tex.jpg");
+    loadTexture("earth_tex.jpg");
+    loadTexture("moon_tex.jpg");
 
     int fbWidth, fbHeight;
     glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
@@ -85,7 +94,7 @@ void GraphicsEngine::renderScene() {
     for (auto& [id, r] : renderables) {
         r->draw(cam->view, cam->projection);
     }
-};
+}
 
 void GraphicsEngine::finishRender() {
     glfwPollEvents();
@@ -99,6 +108,38 @@ void GraphicsEngine::cleanup() {
 #endif
     glfwDestroyWindow(window);
     glfwTerminate();
+}
+
+void GraphicsEngine::loadTexture(const std::string& file) {
+    uint32_t texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    // set the texture wrapping/filtering options (on the currently bound texture object)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // load and generate the texture
+    int width, height, nrChannels;
+    std::string fp = "resources/assets/" + file;
+    uint8_t* data = stbi_load(fp.c_str(), &width, &height, &nrChannels, 0);
+    if (data) {
+        GLenum format = (nrChannels == 4) ? GL_RGBA : (nrChannels == 1 ? GL_RED : GL_RGB);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    } else {
+        printf("Failed to load texture: '%s'\n", file.c_str());
+    }
+    stbi_image_free(data);
+    textures.emplace(file, texture);
+}
+
+int GraphicsEngine::getTextureID(const std::string& file) {
+    auto it = textures.find(file);
+    if (it == textures.end()) {
+        return -1; 
+    }
+    return it->second;
 }
 
 Shader* GraphicsEngine::getShader(const std::string& name) {

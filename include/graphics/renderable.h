@@ -23,6 +23,8 @@ protected:
     GLuint VAO, VBO, EBO;
     glm::mat4 model;
     GLsizei indexCount;
+    glm::vec3 color;
+    int textureID;
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     
@@ -30,7 +32,7 @@ protected:
                    const std::vector<uint32_t>& indices);
 
 public:
-    Renderable(std::weak_ptr<GraphicsEngine> gEng);
+    Renderable(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture);
     virtual ~Renderable();
 
     virtual void draw(const glm::mat4& view, const glm::mat4& projection);
@@ -41,10 +43,10 @@ public:
 
 class Cube : public Renderable {
 private:
-    glm::vec3 color;
+    float sideLength; 
 
 public:
-    Cube(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color);
+    Cube(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture);
 
     void draw(const glm::mat4& view, const glm::mat4& projection) override;
 };
@@ -52,10 +54,9 @@ public:
 class Sphere : public Renderable {
 private:
     float radius;
-    glm::vec3 color;
 
 public:
-    Sphere(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, double realRadius, 
+    Sphere(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture, double realRadius, 
            int sectorCount = 36, int stackCount = 18);
     
     void draw(const glm::mat4& view, const glm::mat4& projection) override;

@@ -6,6 +6,7 @@
 #include "graphics/camera.h"
 #include "graphics/renderable.h" 
 #include "simulation.h"
+#include "update_limiter.h"
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -14,13 +15,15 @@ class GraphicsEngine {
 private:
     std::unordered_map<int, Renderable*> renderables;
     std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
+    std::unordered_map<std::string, int> textures;
 
 public:
     GLFWwindow* window;
     std::string title;
     std::unique_ptr<Camera> cam;
+    UpdateLimiter updateLimiter;
 
-    GraphicsEngine(std::string title, int initialWidth, int initialHeight);
+    GraphicsEngine(std::string title, int initialWidth, int initialHeight, double maxUpdateRate);
     ~GraphicsEngine();
 
     void addRenderable(int id, Renderable* r);
@@ -30,6 +33,9 @@ public:
     void renderScene(); 
     void finishRender();
     void cleanup();
+
+    void loadTexture(const std::string& file);
+    int getTextureID(const std::string& file);
 
     Shader* getShader(const std::string& name); 
     void handleError(int error, const char* description);
