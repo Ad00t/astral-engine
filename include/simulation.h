@@ -11,12 +11,12 @@ class GraphicsEngine;
 
 class SimObj {
 private:
-    int id;
+    std::string id;
     std::unique_ptr<Renderable> renderable;
     std::unique_ptr<PhysObj> physObj;
 
 public:
-    SimObj(int id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj);
+    SimObj(const std::string& id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj);
     ~SimObj() = default;
 
     // default move operations
@@ -31,7 +31,7 @@ public:
     void syncPhysicsToRender();
 
     // accessors
-    int getID() const;
+    std::string getID() const;
     Renderable* getRenderable() const;
     PhysObj* getPhysObj() const;
 };
@@ -40,7 +40,7 @@ class Simulation {
 private:
     std::shared_ptr<GraphicsEngine> gEng;
     std::shared_ptr<PhysicsEngine> pEng;
-    std::unordered_map<int, SimObj> simObjs;
+    std::unordered_map<std::string, SimObj> simObjs;
 
 public:
     UpdateLimiter updateLimiter;
@@ -49,9 +49,9 @@ public:
     Simulation();
     ~Simulation();
 
-    void addSimObj(int id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj);
-    void removeSimObj(int id);
-    const SimObj* getSimObj(int id) const;
+    void addSimObj(const std::string& id, std::unique_ptr<Renderable> renderable, std::unique_ptr<PhysObj> physObj);
+    void removeSimObj(const std::string& id);
+    const SimObj* getSimObj(const std::string& id) const;
     void clear();
 
     // step physObjs and sync to renderables

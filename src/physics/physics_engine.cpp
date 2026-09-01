@@ -1,6 +1,5 @@
 #include "physics/physics_engine.h"
 #include "glm/glm.hpp" 
-#include "update_limiter.h"
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/string_cast.hpp"
 #include <cstdio>
@@ -38,11 +37,11 @@ PhysicsEngine::~PhysicsEngine() {
     clear();
 }
 
-void PhysicsEngine::addPhysObj(int id, PhysObj* physObj) {
+void PhysicsEngine::addPhysObj(const std::string& id, PhysObj* physObj) {
     physObjs.emplace(id, physObj);
 }
 
-void PhysicsEngine::removePhysObj(int id) {
+void PhysicsEngine::removePhysObj(const std::string& id) {
     physObjs.erase(id);
 }
 

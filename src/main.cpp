@@ -47,7 +47,7 @@ int main() {
     sim = std::make_shared<Simulation>(gEng, pEng, SIM_MAX_FPS);
     gui = std::make_shared<GUI>(gEng->window);
 
-    gEng->cam->target = sim->getSimObj(1);
+    gEng->cam->setTarget(sim->getSimObj("earth"));
    
     runSim.store(true);
     simThread = std::thread(simThreadFunc);

@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <ranges>
 #include <cstdio>
 #include <memory>
 #if defined(_WIN32)
@@ -51,18 +52,22 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
    
     // Load shaders
     shaders["simobj"] = std::make_unique<Shader>("simobj.vert", "simobj.frag");
+    shaders["skybox"] = std::make_unique<Shader>("skybox.vert", "skybox.frag");
 
     // Load textures
     // stbi_set_flip_vertically_on_load(true);
-    loadTexture("sun_tex.jpg");
-    loadTexture("earth_tex.jpg");
-    loadTexture("moon_tex.jpg");
+    loadTexture("uvmap/earth_day");
+    loadTexture("uvmap/earth_night");
+    loadTexture("uvmap/sun");
+    loadTexture("uvmap/moon");
+    loadTexture("cubemap/spacebox");
 
     int fbWidth, fbHeight;
     glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
     glViewport(0, 0, fbWidth, fbHeight);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
 #if defined(_WIN32)
     timeBeginPeriod(1); // Sets the minimum OS sleep granularity to 1ms
@@ -76,11 +81,11 @@ GraphicsEngine::~GraphicsEngine() {
     cleanup();
 }
 
-void GraphicsEngine::addRenderable(int id, Renderable* r) {
+void GraphicsEngine::addRenderable(const std::string& id, Renderable* r) {
     renderables.emplace(id, r);
 }
 
-void GraphicsEngine::removeRenderable(int id) {
+void GraphicsEngine::removeRenderable(const std::string& id) {
     renderables.erase(id);
 }
 
@@ -91,9 +96,22 @@ void GraphicsEngine::clear() {
 void GraphicsEngine::renderScene() {
     cam->update();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    for (auto& [id, r] : renderables) {
-        r->draw(cam->view, cam->projection);
-    }
+
+    shaders["simobj"]->use();
+
+    shaders["simobj"]->setVec3("uAmbientLighting", glm::vec3(1.0f)); 
+    renderables["sun"]->draw();
+    
+    glm::vec3 sunPos = glm::vec3(renderables["sun"]->getModel()[3]);
+    shaders["simobj"]->setVec3("uLightPos", glm::vec3(renderables["sun"]->getModel()[3])); 
+    shaders["simobj"]->setVec3("uAmbientLighting", glm::vec3(0.1f)); 
+    
+    renderables["earth"]->draw();
+    renderables["moon"]->draw();
+
+    shaders["skybox"]->use();
+
+    renderables["spacebox"]->draw();
 }
 
 void GraphicsEngine::finishRender() {
@@ -110,40 +128,83 @@ void GraphicsEngine::cleanup() {
     glfwTerminate();
 }
 
-void GraphicsEngine::loadTexture(const std::string& file) {
+void GraphicsEngine::loadTexture(const std::string& key) {
     uint32_t texture;
     glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    // set the texture wrapping/filtering options (on the currently bound texture object)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // load and generate the texture
-    int width, height, nrChannels;
-    std::string fp = "resources/assets/" + file;
-    uint8_t* data = stbi_load(fp.c_str(), &width, &height, &nrChannels, 0);
-    if (data) {
-        GLenum format = (nrChannels == 4) ? GL_RGBA : (nrChannels == 1 ? GL_RED : GL_RGB);
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    } else {
-        printf("Failed to load texture: '%s'\n", file.c_str());
+
+    size_t delim = key.find("/");
+    std::string tex_type = key.substr(0, delim);
+    std::string tex_name = key.substr(delim+1);
+    printf("Loading texture '%s/%s'\n", tex_type.c_str(), tex_name.c_str());
+
+    if (tex_type == "uvmap") {
+        glBindTexture(GL_TEXTURE_2D, texture);
+        
+        // set the texture wrapping/filtering options (on the currently bound texture object)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        // load and generate the texture
+        int width, height, nrChannels;
+        std::string fp = std::format("resources/assets/{}/{}.png", tex_type, tex_name);
+        uint8_t* data = stbi_load(fp.c_str(), &width, &height, &nrChannels, 0);
+        if (data) {
+            GLenum format = (nrChannels == 4) ? GL_RGBA : (nrChannels == 1 ? GL_RED : GL_RGB);
+            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+            glGenerateMipmap(GL_TEXTURE_2D);
+        } else {
+            printf("Failed to load uvmap: '%s'\n", fp.c_str());
+        }
+        stbi_image_free(data);
+        textures.emplace(key, texture);
+        printf("uvmap loaded: '%s' id=%d\n", key.c_str(), texture);
+
+    } else if (tex_type == "cubemap") {
+        glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
+        std::vector<std::string> faces{
+            "right", "left", "top", "bottom", "front", "back"
+        };
+
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // avoid row padding assumptions
+
+        int width, height, nrChannels;
+        for (size_t i = 0; i < faces.size(); i++) {
+            std::string fp = std::format("resources/assets/{}/{}/{}.png", tex_type, tex_name, faces[i]);
+            uint8_t* data = stbi_load(fp.c_str(), &width, &height, &nrChannels, 0);
+            if (data) {
+                GLenum format = (nrChannels == 4) ? GL_RGBA : (nrChannels == 1 ? GL_RED : GL_RGB);
+                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
+                    0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data
+                );
+            } else {
+                printf("Failed to load cubemap: '%s'\n", fp.c_str());
+            }
+            stbi_image_free(data);
+        }
+
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // restore default for subsequent loads
+
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        textures.emplace(key, texture);
+        printf("cubemap loaded: '%s' id=%d\n", key.c_str(), texture);
     }
-    stbi_image_free(data);
-    textures.emplace(file, texture);
 }
 
-int GraphicsEngine::getTextureID(const std::string& file) {
-    auto it = textures.find(file);
+int GraphicsEngine::getTextureID(const std::string& key) {
+    auto it = textures.find(key);
     if (it == textures.end()) {
         return -1; 
     }
     return it->second;
 }
 
-Shader* GraphicsEngine::getShader(const std::string& name) {
-    auto it = shaders.find(name);
+Shader* GraphicsEngine::getShader(const std::string& key) {
+    auto it = shaders.find(key);
     if (it == shaders.end()) {
         return nullptr; 
     }

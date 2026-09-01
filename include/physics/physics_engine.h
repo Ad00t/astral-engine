@@ -26,14 +26,14 @@ public:
 
 class PhysicsEngine {
 private:
-    std::unordered_map<int, PhysObj*> physObjs;
+    std::unordered_map<std::string, PhysObj*> physObjs;
 
 public:
     PhysicsEngine();
     ~PhysicsEngine();
 
-    void addPhysObj(int id, PhysObj* physObj);
-    void removePhysObj(int id);
+    void addPhysObj(const std::string& id, PhysObj* physObj);
+    void removePhysObj(const std::string& id);
     void clear();
 
     void computeForces();

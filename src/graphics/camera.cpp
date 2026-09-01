@@ -57,6 +57,14 @@ Camera::~Camera() {
     cleanup();
 }
 
+void Camera::setTarget(const SimObj* newTarget) {
+    target = newTarget;
+    float minCamRadius = target->getRenderable()->minCamRadius;
+    minRadius = 1.5 * minCamRadius;
+    maxRadius = 1000 * minCamRadius;
+    radius = glm::clamp(radius, minRadius, maxRadius);
+}
+
 void Camera::update() {
     if (target == nullptr) return;
     glm::vec3 renderTarget = toRender(target->getPhysObj()->pos);

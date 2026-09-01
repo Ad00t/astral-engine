@@ -32,13 +32,22 @@ protected:
                    const std::vector<uint32_t>& indices);
 
 public:
-    Renderable(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture);
+    float minCamRadius;
+
+    Renderable(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture, float minCamRadius);
     virtual ~Renderable();
 
-    virtual void draw(const glm::mat4& view, const glm::mat4& projection);
+    virtual void draw();
 
     void setModel(const glm::mat4& model);
     glm::mat4& getModel();
+};
+
+class SkyBox: public Renderable {
+public:
+    SkyBox(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture);
+
+    void draw() override;
 };
 
 class Cube : public Renderable {
@@ -46,9 +55,9 @@ private:
     float sideLength; 
 
 public:
-    Cube(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture);
+    Cube(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture, double realSideLength);
 
-    void draw(const glm::mat4& view, const glm::mat4& projection) override;
+    void draw() override;
 };
 
 class Sphere : public Renderable {
@@ -59,7 +68,7 @@ public:
     Sphere(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture, double realRadius, 
            int sectorCount = 36, int stackCount = 18);
     
-    void draw(const glm::mat4& view, const glm::mat4& projection) override;
+    void draw() override;
 };
 
 #endif // RENDERABLE_H

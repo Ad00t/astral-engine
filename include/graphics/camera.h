@@ -39,6 +39,7 @@ public:
     ~Camera();
     Camera(const Camera&) = delete;
 
+    void setTarget(const SimObj* newTarget);
     void update();
     void cleanup();
 

@@ -13,7 +13,7 @@
 
 class GraphicsEngine {
 private:
-    std::unordered_map<int, Renderable*> renderables;
+    std::unordered_map<std::string, Renderable*> renderables;
     std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
     std::unordered_map<std::string, int> textures;
 
@@ -26,18 +26,20 @@ public:
     GraphicsEngine(std::string title, int initialWidth, int initialHeight, double maxUpdateRate);
     ~GraphicsEngine();
 
-    void addRenderable(int id, Renderable* r);
-    void removeRenderable(int id);
+    void addRenderable(const std::string& id, Renderable* r);
+    void removeRenderable(const std::string& id);
     void clear();
 
     void renderScene(); 
     void finishRender();
     void cleanup();
 
-    void loadTexture(const std::string& file);
-    int getTextureID(const std::string& file);
+    // Texture key is of form <folder>/<name> for both cubemaps and uvmaps
+    // e.g. uvmaps/earth_day or cubemaps/spacebox
+    void loadTexture(const std::string& key);
+    int getTextureID(const std::string& key);
 
-    Shader* getShader(const std::string& name); 
+    Shader* getShader(const std::string& key); 
     void handleError(int error, const char* description);
 };
 
