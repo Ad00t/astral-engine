@@ -88,15 +88,20 @@ void GraphicsEngine::renderScene(std::unordered_map<std::string, std::unique_ptr
     shaders["simobj"].use();
 
     shaders["simobj"].setVec3("uAmbientLighting", glm::vec3(1.0f)); 
+    shaders["simobj"].setBool("uUseTexture", true);
 
     renderables["sun"]->draw(*cam);
     
     glm::vec3 sunPos = glm::vec3(renderables["sun"]->getModel()[3]);
-    shaders["simobj"].setVec3("uLightPos", sunPos); 
+    shaders["simobj"].setVec3("uSunPos", sunPos); 
     shaders["simobj"].setVec3("uAmbientLighting", glm::vec3(0.1f)); 
     
-    renderables["earth"]->draw(*cam);
     renderables["moon"]->draw(*cam);
+    
+    shaders["simobj"].setInt("uNightTextureMap", getTextureID("uvmap/earth_night"));
+    shaders["simobj"].setBool("uUseDayNightTexture", true);
+
+    renderables["earth"]->draw(*cam);
 
     shaders["skybox"].use();
 
