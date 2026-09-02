@@ -1,6 +1,7 @@
 #include "graphics/renderable.h"
 #include "glad/gl.h"
 #include "graphics/graphics_engine.h"
+#include "graphics/camera.h"
 #include "utils.h"
 #include "opengl_includes.h"
 #include "graphics/shader.h"
@@ -8,7 +9,6 @@
 #include "graphics/stb_image.h"
 #include <vector>
 #include <glm/gtc/type_ptr.hpp>
-#include <memory>
 #include <cmath>
 #include <cstdint>
 
@@ -16,15 +16,9 @@
 #define offsetof(t, d) __builtin_offsetof(t, d)
 #endif
 
-Renderable::Renderable(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture, float minCamRadius)
-    : gEng(gEng), VAO(0), VBO(0), EBO(0), color(color), minCamRadius(minCamRadius),
-      model(glm::mat4(1.0f)), indexCount(0), vertices(std::vector<Vertex>()), indices(std::vector<uint32_t>()) {
-    textureID = -1;
-    std::shared_ptr<GraphicsEngine> lgEng = gEng.lock();
-    if (!lgEng) return;
-    if (!texture.empty()) {
-        textureID = lgEng->getTextureID(texture);
-    }
+Renderable::Renderable(Material mat, float radius)
+    : VAO(0), VBO(0), EBO(0), mat(mat), radius(radius), model(glm::mat4(1.0f)), indexCount(0), 
+      vertices(std::vector<Vertex>()), indices(std::vector<uint32_t>()) {
 }
 
 Renderable::~Renderable() {
@@ -33,7 +27,7 @@ Renderable::~Renderable() {
     glDeleteBuffers(1, &EBO);
 }
 
-void Renderable::draw() {}
+void Renderable::draw(const Camera& cam) {}
 
 void Renderable::setupMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices) {
     indexCount = static_cast<GLsizei>(indices.size());
@@ -116,27 +110,22 @@ static const std::vector<Vertex> skyboxVertices = {
     { { 1.0f, -1.0f,  1.0f } }
 };
 
-SkyBox::SkyBox(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture)
-    : Renderable(gEng, color, texture, 0) {
+SkyBox::SkyBox(Material mat)
+    : Renderable(mat, 0) {
     setupMesh(skyboxVertices, std::vector<uint32_t>()); 
 }
 
-void SkyBox::draw() {
-    std::shared_ptr<GraphicsEngine> lgEng = gEng.lock();
-    if (!lgEng) return;
-    Shader* skyboxShader = lgEng->getShader("skybox");
-    if (skyboxShader == nullptr) return;
-
-    glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(lgEng->cam->view)); // strip translation, keep rotation
+void SkyBox::draw(const Camera& cam) {
+    glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(cam.view)); // strip translation, keep rotation
 
     glDepthFunc(GL_LEQUAL);
-    skyboxShader->use();
-    skyboxShader->setMat4("view", viewNoTranslation);
-    skyboxShader->setMat4("projection", lgEng->cam->projection);
+    mat.shader.use();
+    mat.shader.setMat4("view", viewNoTranslation);
+    mat.shader.setMat4("projection", cam.projection);
 
     glBindVertexArray(VAO);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, mat.textureID);
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glBindVertexArray(0);
     glDepthFunc(GL_LESS);
@@ -164,22 +153,17 @@ static const std::vector<uint32_t> cubeIndices = {
     0,1,5, 5,4,0
 };
 
-Cube::Cube(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture, double realSideLength)
-    : Renderable(gEng, color, texture, toRender(realSideLength)), sideLength(toRender(realSideLength)) {
+Cube::Cube(Material mat, float sideLength)
+    : Renderable(mat, sideLength) {
     setupMesh(cubeVertices, cubeIndices);
 }
 
-void Cube::draw() {
-    std::shared_ptr<GraphicsEngine> lgEng = gEng.lock();
-    if (!lgEng) return;
-    Shader* simobjShader = lgEng->getShader("simobj");
-    if (simobjShader == nullptr) return;
-    simobjShader->use();
-    
-    simobjShader->setMat4("model", model);
-    simobjShader->setMat4("view", lgEng->cam->view);
-    simobjShader->setMat4("projection", lgEng->cam->projection);
-    simobjShader->setVec4("uMaterialColor", glm::vec4(color, 1.0)); 
+void Cube::draw(const Camera& cam) {
+    mat.shader.use();
+    mat.shader.setMat4("model", model);
+    mat.shader.setMat4("view", cam.view);
+    mat.shader.setMat4("projection", cam.projection);
+    mat.shader.setVec4("uMaterialColor", glm::vec4(mat.baseColor, 1.0)); 
     
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
@@ -239,32 +223,26 @@ static void generateSphere(float radius, uint32_t sectorCount, uint32_t stackCou
     }
 }
 
-Sphere::Sphere(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture, 
-               double realRadius, int sectorCount, int stackCount)
-    : Renderable(gEng, color, texture, toRender(realRadius)), radius(toRender(realRadius)) {
+Sphere::Sphere(Material mat, float radius)
+    : Renderable(mat, radius) {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-    generateSphere(radius, sectorCount, stackCount, vertices, indices);
+    generateSphere(radius, 18, 36, vertices, indices);
     setupMesh(vertices, indices);
 }
 
-void Sphere::draw() {
-    std::shared_ptr<GraphicsEngine> lgEng = gEng.lock();
-    if (!lgEng) return;
-    Shader* simobjShader = lgEng->getShader("simobj");
-    if (simobjShader == nullptr) return;
-    simobjShader->use();
+void Sphere::draw(const Camera& cam) {
+    mat.shader.use();
+    mat.shader.setMat4("model", model);
+    mat.shader.setMat4("view", cam.view);
+    mat.shader.setMat4("projection", cam.projection);
+    mat.shader.setVec4("uMaterialColor", glm::vec4(mat.baseColor, 1.0)); 
 
-    simobjShader->setMat4("model", model);
-    simobjShader->setMat4("view", lgEng->cam->view);
-    simobjShader->setMat4("projection", lgEng->cam->projection);
-    simobjShader->setVec4("uMaterialColor", glm::vec4(color, 1.0)); 
-
-    simobjShader->setBool("uUseTexture", textureID != -1);
-    simobjShader->setInt("uTextureMap", 0);   
-    if (textureID != -1) {
+    mat.shader.setBool("uUseTexture", mat.textureID != -1);
+    mat.shader.setInt("uTextureMap", 0);   
+    if (mat.textureID != -1) {
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureID);
+        glBindTexture(GL_TEXTURE_2D, mat.textureID);
     }
 
     glBindVertexArray(VAO);

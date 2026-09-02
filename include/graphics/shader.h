@@ -9,7 +9,7 @@
 
 class Shader {
 public:
-    unsigned int ID;
+    uint32_t ID;
    
     Shader(const char* vertexPath, const char* fragmentPath);
     Shader();

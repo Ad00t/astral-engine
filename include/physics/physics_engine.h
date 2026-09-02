@@ -1,43 +1,24 @@
 #ifndef PHYSICS_ENGINE_H
 #define PHYSICS_ENGINE_H
 
-#include <unordered_map>
-#include <memory>
+#include "physics/rigidbody.h"
+#include "update_limiter.h"
 #include <glm/glm.hpp>
-
-class PhysObj {
-public:
-    glm::dvec3 pos;      // m
-    glm::dvec3 vel;      // m/s
-    glm::dvec3 acc;      // m/s^2
-    glm::dvec3 acc_new;  // m/s^2
-    double mass;         // kg
-
-    PhysObj(glm::dvec3 pos = glm::dvec3(0.0),
-            glm::dvec3 vel = glm::dvec3(0.0),
-            double mass = 1.0);
-
-    virtual ~PhysObj() = default;
-
-    void applyForce(const glm::dvec3& force);
-    void integratePos(double dT);
-    void integrateVel(double dT);
-};
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
+#include <unordered_map>
+#include <string>
 
 class PhysicsEngine {
-private:
-    std::unordered_map<std::string, PhysObj*> physObjs;
-
 public:
-    PhysicsEngine();
+    UpdateLimiter updateLimiter;
+
+    PhysicsEngine(double maxUpdateRate);
     ~PhysicsEngine();
 
-    void addPhysObj(const std::string& id, PhysObj* physObj);
-    void removePhysObj(const std::string& id);
-    void clear();
-
-    void computeForces();
-    void updateAll(float dT);
+    void initialize(std::unordered_map<std::string, RigidBody>& rigidbodies);
+    void computeForces(std::unordered_map<std::string, RigidBody>& rigidbodies);
+    void updateRigidBodies(std::unordered_map<std::string, RigidBody>& rigidbodies, double dT);
 };
 
 #endif // PHYSICS_ENGINE_H

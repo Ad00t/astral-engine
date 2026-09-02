@@ -51,8 +51,8 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
     printf("OpenGL %s\n", glGetString(GL_VERSION));
    
     // Load shaders
-    shaders["simobj"] = std::make_unique<Shader>("simobj.vert", "simobj.frag");
-    shaders["skybox"] = std::make_unique<Shader>("skybox.vert", "skybox.frag");
+    shaders["simobj"] = Shader("simobj.vert", "simobj.frag");
+    shaders["skybox"] = Shader("skybox.vert", "skybox.frag");
 
     // Load textures
     // stbi_set_flip_vertically_on_load(true);
@@ -81,37 +81,26 @@ GraphicsEngine::~GraphicsEngine() {
     cleanup();
 }
 
-void GraphicsEngine::addRenderable(const std::string& id, Renderable* r) {
-    renderables.emplace(id, r);
-}
-
-void GraphicsEngine::removeRenderable(const std::string& id) {
-    renderables.erase(id);
-}
-
-void GraphicsEngine::clear() {
-    renderables.clear();
-}
-
-void GraphicsEngine::renderScene() {
+void GraphicsEngine::renderScene(std::unordered_map<std::string, std::unique_ptr<Renderable>>& renderables) {
     cam->update();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    shaders["simobj"]->use();
+    shaders["simobj"].use();
 
-    shaders["simobj"]->setVec3("uAmbientLighting", glm::vec3(1.0f)); 
-    renderables["sun"]->draw();
+    shaders["simobj"].setVec3("uAmbientLighting", glm::vec3(1.0f)); 
+
+    renderables["sun"]->draw(*cam);
     
     glm::vec3 sunPos = glm::vec3(renderables["sun"]->getModel()[3]);
-    shaders["simobj"]->setVec3("uLightPos", glm::vec3(renderables["sun"]->getModel()[3])); 
-    shaders["simobj"]->setVec3("uAmbientLighting", glm::vec3(0.1f)); 
+    shaders["simobj"].setVec3("uLightPos", sunPos); 
+    shaders["simobj"].setVec3("uAmbientLighting", glm::vec3(0.1f)); 
     
-    renderables["earth"]->draw();
-    renderables["moon"]->draw();
+    renderables["earth"]->draw(*cam);
+    renderables["moon"]->draw(*cam);
 
-    shaders["skybox"]->use();
+    shaders["skybox"].use();
 
-    renderables["spacebox"]->draw();
+    renderables["spacebox"]->draw(*cam);
 }
 
 void GraphicsEngine::finishRender() {
@@ -195,20 +184,12 @@ void GraphicsEngine::loadTexture(const std::string& key) {
     }
 }
 
-int GraphicsEngine::getTextureID(const std::string& key) {
-    auto it = textures.find(key);
-    if (it == textures.end()) {
-        return -1; 
-    }
-    return it->second;
+int& GraphicsEngine::getTextureID(const std::string& key) {
+    return textures.at(key);
 }
 
-Shader* GraphicsEngine::getShader(const std::string& key) {
-    auto it = shaders.find(key);
-    if (it == shaders.end()) {
-        return nullptr; 
-    }
-    return it->second.get();
+Shader& GraphicsEngine::getShader(const std::string& key) {
+    return shaders.at(key);
 }
 
 void GraphicsEngine::handleError(int error, const char* description) {

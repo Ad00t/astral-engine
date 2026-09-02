@@ -5,9 +5,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <cmath>
 
-class SimObj;
+class Renderable;
 
 class Camera {
 public:
@@ -32,14 +31,13 @@ public:
     float azimuth = 0.0f;
     float elevation = 0.0f;
 
-    const SimObj* target;
+    Renderable* target;
 
     Camera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed);
-    Camera();
     ~Camera();
     Camera(const Camera&) = delete;
 
-    void setTarget(const SimObj* newTarget);
+    void setTarget(Renderable* newTarget);
     void update();
     void cleanup();
 

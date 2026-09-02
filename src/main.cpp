@@ -1,79 +1,73 @@
 #include "GLFW/glfw3.h"
 #include "opengl_includes.h"
 #include "graphics/graphics_engine.h"
-#include "graphics/camera.h"
 #include "physics/physics_engine.h"
 #include "simulation.h"
 #include "utils.h"
 #include "gui.h"
 #include "update_limiter.h"
-#include <cstdio>
 #include <memory>
 #include <thread>
 #include <chrono>
 #include <mutex>
 #include <atomic>
 
-#define SIM_MAX_FPS             120
+#define PHYSICS_MAX_FPS         120
 #define GRAPHICS_MAX_FPS        240
 
-std::shared_ptr<GraphicsEngine> gEng;
-std::shared_ptr<PhysicsEngine> pEng;
-std::shared_ptr<Simulation> sim;
-std::shared_ptr<GUI> gui;
+std::unique_ptr<GraphicsEngine> gEng;
+std::unique_ptr<PhysicsEngine> pEng;
+std::unique_ptr<Simulation> sim;
+std::unique_ptr<GUI> gui;
+std::thread physicsThread;
 
-std::mutex stateMutex;
-std::atomic<bool> runSim;
-std::thread simThread;
-
-void simThreadFunc() {
+void physicsThreadFunc() {
     auto lastUpdateTime = std::chrono::steady_clock::now();
-    while (runSim.load()) {
-        sim->updateLimiter.startUpdate();
-        double dT = std::chrono::duration<double>(sim->updateLimiter.updateStart - lastUpdateTime).count();
-        lastUpdateTime = sim->updateLimiter.updateStart;
+    while (sim->runPhysics.load()) {
+        pEng->updateLimiter.startUpdate();
+
+        double dT = std::chrono::duration<double>(pEng->updateLimiter.updateStart - lastUpdateTime).count();
+        dT = gui->btn_paused ? 0 : dT * gui->slider_sim_speed;
+        lastUpdateTime = pEng->updateLimiter.updateStart;
         
-        std::unique_lock<std::mutex> lock(stateMutex);
-        sim->update(gui->btn_paused ? 0 : dT * gui->slider_sim_speed);
+        std::unique_lock<std::mutex> lock(sim->stateMutex);
+        pEng->updateRigidBodies(sim->rigidbodies, dT);
+        sim->syncPhysicsToRender();
         lock.unlock();
 
-        sim->updateLimiter.endUpdate();
+        pEng->updateLimiter.endUpdate();
     }
 }
 
 int main() {
-    gEng = std::make_shared<GraphicsEngine>("Astral Engine v1.0.0", 1600, 900, GRAPHICS_MAX_FPS);
-    pEng = std::make_shared<PhysicsEngine>();
-    sim = std::make_shared<Simulation>(gEng, pEng, SIM_MAX_FPS);
-    gui = std::make_shared<GUI>(gEng->window);
-
-    gEng->cam->setTarget(sim->getSimObj("earth"));
-   
-    runSim.store(true);
-    simThread = std::thread(simThreadFunc);
+    gEng = std::make_unique<GraphicsEngine>("Astral Engine v1.0.0", 1600, 900, GRAPHICS_MAX_FPS); 
+    pEng = std::make_unique<PhysicsEngine>(PHYSICS_MAX_FPS);
+    sim = std::make_unique<Simulation>(*gEng, *pEng);
+    gui = std::make_unique<GUI>(gEng->window);
+    physicsThread = std::thread(physicsThreadFunc);
 
     while (!glfwWindowShouldClose(gEng->window)) {
         gEng->updateLimiter.startUpdate(); 
+
         gui->newFrame();
 
-        std::unique_lock<std::mutex> lock(stateMutex);
-        gEng->renderScene();
+        std::unique_lock<std::mutex> lock(sim->stateMutex);
+        gEng->renderScene(sim->renderables);
         lock.unlock();
 
         gui->drawElements();
         gui->render();
         gEng->finishRender();
+
         gEng->updateLimiter.endUpdate();
     }
 
-    runSim.store(false);
-    if (simThread.joinable()) {
-        simThread.join();
+    // Cleanup
+    sim->runPhysics.store(false);
+    if (physicsThread.joinable()) {
+        physicsThread.join();
     }
-
-    sim->clear(); 
+    sim->clear();
     gui->cleanup();
-    gEng->cleanup();
-
     return 0;
 }

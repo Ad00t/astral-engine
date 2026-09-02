@@ -3,11 +3,14 @@
 
 #include "glm/ext/vector_float3.hpp"
 #include "opengl_includes.h"
+#include "graphics/camera.h"
+#include "graphics/shader.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
-#include <memory>
 #include <cstdint>
+
+class GraphicsEngine;
 
 struct Vertex {
     glm::vec3 pos;
@@ -15,60 +18,52 @@ struct Vertex {
     glm::vec2 uv;   
 };
 
-class GraphicsEngine;
+struct Material {
+    glm::vec3 baseColor;
+    Shader shader;
+    int textureID;
+};
 
 class Renderable {
 protected:
-    std::weak_ptr<GraphicsEngine> gEng;
     GLuint VAO, VBO, EBO;
     glm::mat4 model;
     GLsizei indexCount;
-    glm::vec3 color;
-    int textureID;
+    Material mat;
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-    
-    void setupMesh(const std::vector<Vertex>& vertices,
-                   const std::vector<uint32_t>& indices);
 
+    void setupMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
 public:
-    float minCamRadius;
+    float radius;
 
-    Renderable(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture, float minCamRadius);
+    Renderable(Material mat, float radius);
+    Renderable(const Renderable&) = delete;
+    Renderable& operator=(const Renderable&) = delete;
+    Renderable(Renderable&&) noexcept;
+    Renderable& operator=(Renderable&&) noexcept;
     virtual ~Renderable();
-
-    virtual void draw();
-
+    virtual void draw(const Camera& cam) = 0;
     void setModel(const glm::mat4& model);
     glm::mat4& getModel();
 };
 
-class SkyBox: public Renderable {
+class SkyBox : public Renderable {
 public:
-    SkyBox(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture);
-
-    void draw() override;
+    SkyBox(Material mat);
+    void draw(const Camera& cam) override;
 };
 
 class Cube : public Renderable {
-private:
-    float sideLength; 
-
 public:
-    Cube(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture, double realSideLength);
-
-    void draw() override;
+    Cube(Material mat, float sideLength);
+    void draw(const Camera& cam) override;
 };
 
 class Sphere : public Renderable {
-private:
-    float radius;
-
 public:
-    Sphere(std::weak_ptr<GraphicsEngine> gEng, glm::vec3 color, std::string texture, double realRadius, 
-           int sectorCount = 36, int stackCount = 18);
-    
-    void draw() override;
+    Sphere(Material mat, float radius); 
+    void draw(const Camera& cam) override;
 };
 
 #endif // RENDERABLE_H
