@@ -23,20 +23,21 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
 
     // Spacebox
     renderables.emplace("spacebox", std::make_unique<SkyBox>(
-        Material(
-            glm::vec3(0.0), 
-            gEng.getShader("skybox"), 
-            gEng.getTextureID("cubemap/spacebox")
-        )
+        Material{
+            .shader = gEng.getShader("skybox"), 
+            .textureID = gEng.getTextureID("cubemap/spacebox"),
+            .uBaseColor = glm::vec4(0, 0, 0, 1) 
+        }
     ));
 
     // Sun
     renderables.emplace("sun", std::make_unique<Sphere>(
-        Material(
-            glm::vec3(1, 1, 0), 
-            gEng.getShader("simobj"), 
-            gEng.getTextureID("uvmap/sun")
-        ),
+        Material{
+            .shader = gEng.getShader("entity"), 
+            .textureID = gEng.getTextureID("uvmap/sun"),
+            .uBaseColor = glm::vec4(1, 1, 0, 1),
+            .uEmissiveLighting = glm::vec3(1.0f)
+        },
         toRender(R_SUN)
     ));
     rigidbodies.emplace("sun", RigidBody(
@@ -49,11 +50,13 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
 
     // Earth
     renderables.emplace("earth", std::make_unique<Sphere>(
-        Material(
-            glm::vec3(0, 0, 1), 
-            gEng.getShader("simobj"), 
-            gEng.getTextureID("uvmap/earth_day")
-        ),
+        Material{
+            .shader = gEng.getShader("entity"), 
+            .textureID = gEng.getTextureID("uvmap/earth_day"),
+            .textureID2 = gEng.getTextureID("uvmap/earth_night"),
+            .uBaseColor = glm::vec4(0, 0, 1, 1), 
+            .uUseDayNightBlend = true
+        },
         toRender(R_EARTH)
     ));
     rigidbodies.emplace("earth", RigidBody(
@@ -66,11 +69,11 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
    
     // Moon
     renderables.emplace("moon", std::make_unique<Sphere>(
-        Material(
-            glm::vec3(1, 1, 1), 
-            gEng.getShader("simobj"),
-            gEng.getTextureID("uvmap/moon")
-        ),
+        Material{
+            .shader = gEng.getShader("entity"),
+            .textureID = gEng.getTextureID("uvmap/moon"),
+            .uBaseColor = glm::vec4(1, 1, 1, 1)
+        },
         toRender(R_MOON)
     ));
     rigidbodies.emplace("moon", RigidBody(
@@ -82,7 +85,6 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     ));
 
     pEng.initialize(rigidbodies);
-    gEng.cam->setTarget(renderables.at("earth").get());
 }
 
 Simulation::~Simulation() {}

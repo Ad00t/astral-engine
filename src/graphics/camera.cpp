@@ -60,7 +60,7 @@ void Camera::setTarget(Renderable* newTarget) {
     float minCamRadius = target->radius;
     minRadius = 1.5 * minCamRadius;
     maxRadius = 1000 * minCamRadius;
-    radius = glm::clamp(radius, minRadius, maxRadius);
+    radius = glm::clamp(minRadius * 5, minRadius, maxRadius);
 }
 
 void Camera::update() {
@@ -110,7 +110,7 @@ void Camera::handleMouseButton(GLFWwindow* win, int button, int action, int mods
 }
 
 void Camera::handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) { 
-    radius = glm::clamp(radius - (float) yoffset*zoomSpeed, minRadius, maxRadius);
+    radius = glm::clamp(radius - (float) yoffset*zoomSpeed*(0.1f*target->radius), minRadius, maxRadius);
 }
 
 void Camera::handleKeyboard(GLFWwindow* win, int key, int scancode, int action, int mods) {

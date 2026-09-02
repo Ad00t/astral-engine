@@ -64,6 +64,10 @@ glm::mat4& Renderable::getModel() {
     return model;
 }
 
+void Renderable::setSunPos(const glm::vec3& sunPos) {
+    mat.uSunPos = sunPos;
+}
+
 // SKYBOX
 
 static const std::vector<Vertex> skyboxVertices = {
@@ -163,8 +167,27 @@ void Cube::draw(const Camera& cam) {
     mat.shader.setMat4("model", model);
     mat.shader.setMat4("view", cam.view);
     mat.shader.setMat4("projection", cam.projection);
-    mat.shader.setVec4("uMaterialColor", glm::vec4(mat.baseColor, 1.0)); 
-    
+
+    mat.shader.setVec4("uBaseColor", mat.uBaseColor); 
+    mat.shader.setInt("uTextureMap", mat.uTextureMap);   
+    mat.shader.setBool("uUseTexture", mat.uUseTexture);
+    mat.shader.setInt("uNightTextureMap", mat.uNightTextureMap);   
+    mat.shader.setBool("uUseDayNightBlend", mat.uUseDayNightBlend);
+    mat.shader.setVec3("uSunPos", mat.uSunPos);
+    mat.shader.setVec3("uAmbientLighting", mat.uAmbientLighting);
+    mat.shader.setVec3("uNightAmbientBoost", mat.uNightAmbientBoost);
+    mat.shader.setVec3("uEmissiveLighting", mat.uEmissiveLighting);
+
+    if (mat.uUseTexture) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, mat.textureID);
+    }
+
+    if (mat.uUseDayNightBlend) {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, mat.textureID2);
+    }
+
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
@@ -227,7 +250,7 @@ Sphere::Sphere(Material mat, float radius)
     : Renderable(mat, radius) {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-    generateSphere(radius, 18, 36, vertices, indices);
+    generateSphere(radius, 256, 256, vertices, indices);
     setupMesh(vertices, indices);
 }
 
@@ -236,13 +259,25 @@ void Sphere::draw(const Camera& cam) {
     mat.shader.setMat4("model", model);
     mat.shader.setMat4("view", cam.view);
     mat.shader.setMat4("projection", cam.projection);
-    mat.shader.setVec4("uMaterialColor", glm::vec4(mat.baseColor, 1.0)); 
 
-    mat.shader.setBool("uUseTexture", mat.textureID != -1);
-    mat.shader.setInt("uTextureMap", 0);   
-    if (mat.textureID != -1) {
+    mat.shader.setVec4("uBaseColor", mat.uBaseColor); 
+    mat.shader.setInt("uTextureMap", mat.uTextureMap);   
+    mat.shader.setBool("uUseTexture", mat.uUseTexture);
+    mat.shader.setInt("uNightTextureMap", mat.uNightTextureMap);   
+    mat.shader.setBool("uUseDayNightBlend", mat.uUseDayNightBlend);
+    mat.shader.setVec3("uSunPos", mat.uSunPos);
+    mat.shader.setVec3("uAmbientLighting", mat.uAmbientLighting);
+    mat.shader.setVec3("uNightAmbientBoost", mat.uNightAmbientBoost);
+    mat.shader.setVec3("uEmissiveLighting", mat.uEmissiveLighting);
+
+    if (mat.uUseTexture) {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, mat.textureID);
+    }
+
+    if (mat.uUseDayNightBlend) {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, mat.textureID2);
     }
 
     glBindVertexArray(VAO);

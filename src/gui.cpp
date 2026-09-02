@@ -27,7 +27,11 @@ void GUI::newFrame() {
     ImGui::NewFrame();
 }
 
-void GUI::drawElements() {
+void GUI::drawElements(
+    std::unordered_map<std::string, RigidBody>& rigidbodies,
+    std::unordered_map<std::string, std::unique_ptr<Renderable>>& renderables,
+    Camera& cam
+) {
     ImGui::SetNextWindowPos(ImVec2(10, 10));
     ImGui::SetNextWindowBgAlpha(0.3f);
     ImGui::Begin("Options", nullptr, ImGuiWindowFlags_NoDecoration | 
@@ -41,8 +45,24 @@ void GUI::drawElements() {
        btn_paused = !btn_paused; 
     }
     
-    ImGui::SliderFloat("Sim Speed", &slider_sim_speed, 0, 1e5f, "%.3fx", 
+    ImGui::SliderFloat("Sim Speed", &slider_sim_speed, 0, 1e6f, "%.3fx", 
                        ImGuiSliderFlags_None & ~ImGuiSliderFlags_WrapAround);
+
+    if (ImGui::BeginCombo("Camera Target", camTargetID.c_str())) {
+        for (const auto& [id, rb] : rigidbodies) {
+            bool isSelected = (id == camTargetID);
+            if (ImGui::Selectable(id.c_str(), isSelected)) {
+                camTargetID = id;
+                if (renderables.contains(id)) {
+                    cam.setTarget(renderables.at(id).get());
+                }
+            }
+            if (isSelected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
     
     ImGui::End();
 }
@@ -58,4 +78,8 @@ void GUI::cleanup() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+}
+
+const std::string& GUI::getCamTargetID() {
+    return camTargetID;
 }

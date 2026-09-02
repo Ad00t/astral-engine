@@ -44,6 +44,8 @@ int main() {
     pEng = std::make_unique<PhysicsEngine>(PHYSICS_MAX_FPS);
     sim = std::make_unique<Simulation>(*gEng, *pEng);
     gui = std::make_unique<GUI>(gEng->window);
+
+    gEng->cam->setTarget(sim->renderables.at(gui->getCamTargetID()).get());
     physicsThread = std::thread(physicsThreadFunc);
 
     while (!glfwWindowShouldClose(gEng->window)) {
@@ -53,9 +55,9 @@ int main() {
 
         std::unique_lock<std::mutex> lock(sim->stateMutex);
         gEng->renderScene(sim->renderables);
+        gui->drawElements(sim->rigidbodies, sim->renderables, *gEng->cam);
         lock.unlock();
 
-        gui->drawElements();
         gui->render();
         gEng->finishRender();
 

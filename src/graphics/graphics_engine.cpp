@@ -51,7 +51,7 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
     printf("OpenGL %s\n", glGetString(GL_VERSION));
    
     // Load shaders
-    shaders["simobj"] = Shader("simobj.vert", "simobj.frag");
+    shaders["entity"] = Shader("entity.vert", "entity.frag");
     shaders["skybox"] = Shader("skybox.vert", "skybox.frag");
 
     // Load textures
@@ -85,27 +85,11 @@ void GraphicsEngine::renderScene(std::unordered_map<std::string, std::unique_ptr
     cam->update();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    shaders["simobj"].use();
-
-    shaders["simobj"].setVec3("uAmbientLighting", glm::vec3(1.0f)); 
-    shaders["simobj"].setBool("uUseTexture", true);
-
-    renderables["sun"]->draw(*cam);
-    
     glm::vec3 sunPos = glm::vec3(renderables["sun"]->getModel()[3]);
-    shaders["simobj"].setVec3("uSunPos", sunPos); 
-    shaders["simobj"].setVec3("uAmbientLighting", glm::vec3(0.1f)); 
-    
-    renderables["moon"]->draw(*cam);
-    
-    shaders["simobj"].setInt("uNightTextureMap", getTextureID("uvmap/earth_night"));
-    shaders["simobj"].setBool("uUseDayNightTexture", true);
-
-    renderables["earth"]->draw(*cam);
-
-    shaders["skybox"].use();
-
-    renderables["spacebox"]->draw(*cam);
+    for (auto& [id, rend] : renderables) {
+        rend->setSunPos(sunPos);
+        rend->draw(*cam);
+    }
 }
 
 void GraphicsEngine::finishRender() {
