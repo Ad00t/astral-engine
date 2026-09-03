@@ -2,6 +2,7 @@
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 #include "imgui.h"
+#include "simulation.h"
 #include "opengl_includes.h"
 
 GUI::GUI(GLFWwindow* window) {
@@ -27,11 +28,7 @@ void GUI::newFrame() {
     ImGui::NewFrame();
 }
 
-void GUI::drawElements(
-    std::unordered_map<std::string, RigidBody>& rigidbodies,
-    std::unordered_map<std::string, std::unique_ptr<Renderable>>& renderables,
-    Camera& cam
-) {
+void GUI::drawElements(Simulation& sim, Camera& cam) {
     ImGui::SetNextWindowPos(ImVec2(10, 10));
     ImGui::SetNextWindowBgAlpha(0.3f);
     ImGui::Begin("Options", nullptr, ImGuiWindowFlags_NoDecoration | 
@@ -49,12 +46,12 @@ void GUI::drawElements(
                        ImGuiSliderFlags_None & ~ImGuiSliderFlags_WrapAround);
 
     if (ImGui::BeginCombo("Camera Target", camTargetID.c_str())) {
-        for (const auto& [id, rb] : rigidbodies) {
+        for (const auto& [id, rb] : sim.rigidbodies) {
             bool isSelected = (id == camTargetID);
             if (ImGui::Selectable(id.c_str(), isSelected)) {
                 camTargetID = id;
-                if (renderables.contains(id)) {
-                    cam.setTarget(renderables.at(id).get());
+                if (sim.renderables.contains(id)) {
+                    cam.setTarget(sim.renderables.at(id).get());
                 }
             }
             if (isSelected) {

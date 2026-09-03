@@ -3,13 +3,12 @@
 
 #include "graphics/renderable.h"
 #include "physics/rigidbody.h"
-#include "graphics/graphics_engine.h"
-#include "physics/physics_engine.h"
 #include <unordered_map>
 #include <memory>
 #include <atomic>
 
 class GraphicsEngine;
+class PhysicsEngine;
 
 class Simulation {
 public:

@@ -1,4 +1,5 @@
 #include "physics/physics_engine.h"
+#include "simulation.h"
 #include "glm/geometric.hpp"
 #include <glm/glm.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -12,22 +13,22 @@ PhysicsEngine::PhysicsEngine(double maxUpdateRate)
 
 PhysicsEngine::~PhysicsEngine() {}
 
-void PhysicsEngine::initialize(std::unordered_map<std::string, RigidBody>& rigidbodies) {
-    computeForces(rigidbodies);
-    for (auto& [id, rb] : rigidbodies) {
+void PhysicsEngine::initialize(Simulation& sim) {
+    computeForces(sim);
+    for (auto& [id, rb] : sim.rigidbodies) {
         rb.acc = rb.acc_new;
     }
-    for (auto& [id, rb] : rigidbodies) {
+    for (auto& [id, rb] : sim.rigidbodies) {
         rb.acc_new = glm::dvec3(0.0);
     }
 }
 
-void PhysicsEngine::computeForces(std::unordered_map<std::string, RigidBody>& rigidbodies) {
-    for (auto it1 = rigidbodies.begin(); it1 != rigidbodies.end(); ++it1) {
+void PhysicsEngine::computeForces(Simulation& sim) {
+    for (auto it1 = sim.rigidbodies.begin(); it1 != sim.rigidbodies.end(); ++it1) {
         auto& [id1, rb1] = *it1;
         auto it2 = it1;
         ++it2;
-        for (; it2 != rigidbodies.end(); ++it2) {
+        for (; it2 != sim.rigidbodies.end(); ++it2) {
             auto& [id2, rb2] = *it2;
 
             glm::dvec3 dir = rb2.pos - rb1.pos;
@@ -41,15 +42,15 @@ void PhysicsEngine::computeForces(std::unordered_map<std::string, RigidBody>& ri
     }
 }
 
-void PhysicsEngine::updateRigidBodies(std::unordered_map<std::string, RigidBody>& rigidbodies, double dT) {
-    for (auto& [id, rb] : rigidbodies) {
+void PhysicsEngine::updateRigidBodies(Simulation& sim, double dT) {
+    for (auto& [id, rb] : sim.rigidbodies) {
         rb.integratePos(dT);
         rb.integrateRot(dT);
     }
 
-    computeForces(rigidbodies);
+    computeForces(sim);
 
-    for (auto& [id, rb] : rigidbodies) {
+    for (auto& [id, rb] : sim.rigidbodies) {
         rb.integrateVel(dT);
     }
 }

@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include "physics/rigidbody.h"
+#include "simulation.h"
 #include "graphics/renderable.h"
 #include "graphics/camera.h"
 
@@ -20,11 +21,7 @@ public:
     ~GUI();
 
     void newFrame();
-    void drawElements(
-        std::unordered_map<std::string, RigidBody>& rigidbodies,
-        std::unordered_map<std::string, std::unique_ptr<Renderable>>& renderables,
-        Camera& cam
-    );
+    void drawElements(Simulation& sim, Camera& cam);
     void render();
     void cleanup();
 

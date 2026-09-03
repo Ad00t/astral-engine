@@ -81,12 +81,12 @@ GraphicsEngine::~GraphicsEngine() {
     cleanup();
 }
 
-void GraphicsEngine::renderScene(std::unordered_map<std::string, std::unique_ptr<Renderable>>& renderables) {
+void GraphicsEngine::renderScene(Simulation& sim) {
     cam->update();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glm::vec3 sunPos = glm::vec3(renderables["sun"]->getModel()[3]);
-    for (auto& [id, rend] : renderables) {
+    glm::vec3 sunPos = glm::vec3(sim.renderables["sun"]->getModel()[3]);
+    for (auto& [id, rend] : sim.renderables) {
         rend->setSunPos(sunPos);
         rend->draw(*cam);
     }

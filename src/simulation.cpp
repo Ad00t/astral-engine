@@ -84,7 +84,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         R_MOON, M_MOON 
     ));
 
-    pEng.initialize(rigidbodies);
+    pEng.initialize(*this);
 }
 
 Simulation::~Simulation() {}

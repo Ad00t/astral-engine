@@ -31,7 +31,7 @@ void physicsThreadFunc() {
         lastUpdateTime = pEng->updateLimiter.updateStart;
         
         std::unique_lock<std::mutex> lock(sim->stateMutex);
-        pEng->updateRigidBodies(sim->rigidbodies, dT);
+        pEng->updateRigidBodies(*sim, dT);
         sim->syncPhysicsToRender();
         lock.unlock();
 
@@ -54,8 +54,8 @@ int main() {
         gui->newFrame();
 
         std::unique_lock<std::mutex> lock(sim->stateMutex);
-        gEng->renderScene(sim->renderables);
-        gui->drawElements(sim->rigidbodies, sim->renderables, *gEng->cam);
+        gEng->renderScene(*sim);
+        gui->drawElements(*sim, *gEng->cam);
         lock.unlock();
 
         gui->render();

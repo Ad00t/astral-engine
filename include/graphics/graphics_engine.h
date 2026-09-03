@@ -25,7 +25,7 @@ public:
     GraphicsEngine(std::string title, int initialWidth, int initialHeight, double maxUpdateRate);
     ~GraphicsEngine();
 
-    void renderScene(std::unordered_map<std::string, std::unique_ptr<Renderable>>& renderables); 
+    void renderScene(Simulation& sim); 
     void finishRender();
     void cleanup();
 
