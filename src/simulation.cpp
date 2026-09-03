@@ -92,11 +92,14 @@ Simulation::~Simulation() {}
 void Simulation::syncPhysicsToRender() {
     for (auto& [id, rb] : rigidbodies) {
         if (!renderables.contains(id)) continue;
+        std::unique_ptr<Renderable>& rend = renderables.at(id);
+
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, toRender(rb.pos));
+        rend->pos = toRender(rb.pos);
+        model = glm::translate(model, rend->pos);
         glm::mat4 rotationMatrix = glm::mat4_cast(rb.rot);
         model = model * rotationMatrix; 
-        renderables.at(id)->setModel(model);
+        rend->setModel(model);
     }
 }
 

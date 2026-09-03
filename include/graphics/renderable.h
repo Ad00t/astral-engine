@@ -20,8 +20,8 @@ struct Vertex {
 
 struct Material {
     Shader shader;
-    int textureID;
-    int textureID2;
+    GLuint textureID;
+    GLuint textureID2;
    
     // entity uniforms
     glm::vec4 uBaseColor = glm::vec4(1.0f);
@@ -30,8 +30,8 @@ struct Material {
     int uNightTextureMap = 1;
     bool uUseDayNightBlend = false;
     glm::vec3 uSunPos = glm::vec3(0.0f);
-    glm::vec3 uAmbientLighting = glm::vec3(0.1f);
-    glm::vec3 uNightAmbientBoost = glm::vec3(1.0f);
+    glm::vec3 uAmbientLighting = glm::vec3(0.02f);
+    glm::vec3 uNightAmbientBoost = glm::vec3(0.8f);
     glm::vec3 uEmissiveLighting = glm::vec3(0.0f);
 };
 
@@ -46,6 +46,7 @@ protected:
 
     void setupMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
 public:
+    glm::vec3 pos;
     float radius;
 
     Renderable(Material mat, float radius);

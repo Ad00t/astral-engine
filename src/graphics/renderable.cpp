@@ -17,7 +17,7 @@
 #endif
 
 Renderable::Renderable(Material mat, float radius)
-    : VAO(0), VBO(0), EBO(0), mat(mat), radius(radius), model(glm::mat4(1.0f)), indexCount(0), 
+    : VAO(0), VBO(0), EBO(0), mat(mat), pos(glm::vec3(0.0f)), radius(radius), model(glm::mat4(1.0f)), indexCount(0), 
       vertices(std::vector<Vertex>()), indices(std::vector<uint32_t>()) {
 }
 

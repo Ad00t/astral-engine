@@ -48,6 +48,5 @@ void main() {
 
     vec3 light = uEmissiveLighting + uAmbientLighting + nightBoost + vec3(diffuse);
     vec3 finalColor = light * baseColor.rgb;
-    // finalColor = finalColor / (finalColor + vec3(1.0)); // Reinhard, prevents hard clipping
     FragColor = vec4(finalColor, baseColor.a);
 }

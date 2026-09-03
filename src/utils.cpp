@@ -1,8 +1,7 @@
 #include "utils.h"
-#include <cmath>
 #include <glm/glm.hpp>
 
-constexpr double RENDER_SCALE = 1e-6; // 1 render unit = 1,000,000 m
+constexpr double RENDER_SCALE = 1e-3; // 1 render unit = 1,000,000 m
 
 glm::vec3 toRender(glm::dvec3 physicsPos) {
     return physicsPos * RENDER_SCALE;

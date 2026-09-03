@@ -11,8 +11,8 @@
 #include <simulation.h>
 
 Camera::Camera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed)
-    : window(window), position(glm::vec3(0.0f)), orbitSpeed(orbitSpeed), panSpeed(panSpeed), zoomSpeed(zoomSpeed),
-      radius(toRender(initialRealRadius)), minRadius(toRender(minRealRadius)), maxRadius(toRender(maxRealRadius)) {
+    : window(window), radius(toRender(initialRealRadius)), minRadius(toRender(minRealRadius)), maxRadius(toRender(maxRealRadius)),
+     orbitSpeed(orbitSpeed), panSpeed(panSpeed), zoomSpeed(zoomSpeed), position(glm::vec3(0.0f)) {
 
     glfwGetWindowSize(window, &width, &height);
     glfwSetWindowUserPointer(window, this);
@@ -45,9 +45,10 @@ Camera::Camera(GLFWwindow* window, double initialRealRadius, double minRealRadiu
             cam->handleKeyboard(win, key, scancode, action, mods);
     });
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow* win, int width, int height) {
+        if (width == 0 || height == 0) return;
         Camera* cam = (Camera*)glfwGetWindowUserPointer(win);
-        glViewport(0, 0, width, height);
-        glfwGetWindowSize(win, &cam->width, &cam->height);
+        cam->width = width;
+        cam->height = height;
     });
 }
 
@@ -64,16 +65,16 @@ void Camera::setTarget(Renderable* newTarget) {
 }
 
 void Camera::update() {
-    glm::vec3 targetPos = glm::vec3(target->getModel()[3]);
     position = glm::vec3(
         radius * cos(elevation) * cos(azimuth),
         radius * cos(elevation) * sin(azimuth),
         radius * sin(elevation)
-    ) + targetPos;
+    ) + target->pos;
     
     model = glm::mat4(1.0f);
-    view = glm::lookAt(position, targetPos, glm::vec3(0,0,1));
-    projection = glm::infinitePerspective(glm::radians(60.0f), float(width) / float(height), 0.1f);
+    view = glm::lookAt(position, target->pos, glm::vec3(0,0,1));
+    float dynamicNear = glm::max(radius * 0.001f, 1e-4f);
+    projection = glm::infinitePerspective(glm::radians(60.0f), float(width) / float(height), dynamicNear);
 }
 
 void Camera::cleanup() {

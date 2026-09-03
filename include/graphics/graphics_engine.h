@@ -14,7 +14,19 @@
 class GraphicsEngine {
 private:
     std::unordered_map<std::string, Shader> shaders;
-    std::unordered_map<std::string, int> textures;
+    std::unordered_map<std::string, GLuint> textures;
+
+    GLuint hdrFBO = 0;
+    GLuint atmoFBO = 0;
+    GLuint hdrColorTex = 0;
+    GLuint hdrDepthTex = 0;
+    int fbWidth = 0, fbHeight = 0;
+    GLuint quadVAO = 0, quadVBO = 0;
+
+    void createHDRFramebuffer(int width, int height);
+    void destroyHDRFramebuffer();
+    void resizeHDRFramebuffer(int width, int height);
+    void setupScreenQuad();
 
 public:
     GLFWwindow* window;
@@ -32,7 +44,7 @@ public:
     // Texture key is of form <folder>/<name> for both cubemaps and uvmaps
     // e.g. uvmaps/earth_day or cubemaps/spacebox
     void loadTexture(const std::string& key);
-    int& getTextureID(const std::string& key);
+    GLuint& getTextureID(const std::string& key);
 
     Shader& getShader(const std::string& key); 
     void handleError(int error, const char* description);
