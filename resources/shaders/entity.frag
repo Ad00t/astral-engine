@@ -1,10 +1,11 @@
 #version 410 core
 
-out vec4 FragColor;
-
 in vec3 FragPos;
 in vec3 Normal;
 in vec2 UV;
+
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BrightColor;  
 
 uniform vec4 uBaseColor;
 uniform sampler2D uTextureMap;
@@ -49,4 +50,11 @@ void main() {
     vec3 light = uEmissiveLighting + uAmbientLighting + nightBoost + vec3(diffuse);
     vec3 finalColor = light * baseColor.rgb;
     FragColor = vec4(finalColor, baseColor.a);
+
+    // Extract bright regions for bloom
+    float brightness = dot(FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+    if(brightness > 1.0)
+        BrightColor = vec4(FragColor.rgb, 1.0);
+    else
+        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
 }

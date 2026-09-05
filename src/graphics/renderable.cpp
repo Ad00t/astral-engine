@@ -56,6 +56,31 @@ void Renderable::setupMesh(const std::vector<Vertex>& vertices, const std::vecto
     glBindVertexArray(0);
 }
 
+void Renderable::bindMaterial(const Camera& cam) {
+    mat.shader.use();
+    mat.shader.setMat4("model", model);
+    mat.shader.setMat4("view", cam.view);
+    mat.shader.setMat4("projection", cam.projection);
+    mat.shader.setVec4("uBaseColor", mat.uBaseColor);
+    mat.shader.setInt("uTextureMap", mat.uTextureMap);
+    mat.shader.setBool("uUseTexture", mat.uUseTexture);
+    mat.shader.setInt("uNightTextureMap", mat.uNightTextureMap);
+    mat.shader.setBool("uUseDayNightBlend", mat.uUseDayNightBlend);
+    mat.shader.setVec3("uSunPos", mat.uSunPos);
+    mat.shader.setVec3("uAmbientLighting", mat.uAmbientLighting);
+    mat.shader.setVec3("uNightAmbientBoost", mat.uNightAmbientBoost);
+    mat.shader.setVec3("uEmissiveLighting", mat.uEmissiveLighting);
+
+    if (mat.uUseTexture) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, mat.textureID);
+    }
+    if (mat.uUseDayNightBlend) {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, mat.textureID2);
+    }
+}
+
 void Renderable::setModel(const glm::mat4& m) {
     model = m;
 }
@@ -163,31 +188,7 @@ Cube::Cube(Material mat, float sideLength)
 }
 
 void Cube::draw(const Camera& cam) {
-    mat.shader.use();
-    mat.shader.setMat4("model", model);
-    mat.shader.setMat4("view", cam.view);
-    mat.shader.setMat4("projection", cam.projection);
-
-    mat.shader.setVec4("uBaseColor", mat.uBaseColor); 
-    mat.shader.setInt("uTextureMap", mat.uTextureMap);   
-    mat.shader.setBool("uUseTexture", mat.uUseTexture);
-    mat.shader.setInt("uNightTextureMap", mat.uNightTextureMap);   
-    mat.shader.setBool("uUseDayNightBlend", mat.uUseDayNightBlend);
-    mat.shader.setVec3("uSunPos", mat.uSunPos);
-    mat.shader.setVec3("uAmbientLighting", mat.uAmbientLighting);
-    mat.shader.setVec3("uNightAmbientBoost", mat.uNightAmbientBoost);
-    mat.shader.setVec3("uEmissiveLighting", mat.uEmissiveLighting);
-
-    if (mat.uUseTexture) {
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, mat.textureID);
-    }
-
-    if (mat.uUseDayNightBlend) {
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, mat.textureID2);
-    }
-
+    bindMaterial(cam);
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
@@ -255,31 +256,7 @@ Sphere::Sphere(Material mat, float radius)
 }
 
 void Sphere::draw(const Camera& cam) {
-    mat.shader.use();
-    mat.shader.setMat4("model", model);
-    mat.shader.setMat4("view", cam.view);
-    mat.shader.setMat4("projection", cam.projection);
-
-    mat.shader.setVec4("uBaseColor", mat.uBaseColor); 
-    mat.shader.setInt("uTextureMap", mat.uTextureMap);   
-    mat.shader.setBool("uUseTexture", mat.uUseTexture);
-    mat.shader.setInt("uNightTextureMap", mat.uNightTextureMap);   
-    mat.shader.setBool("uUseDayNightBlend", mat.uUseDayNightBlend);
-    mat.shader.setVec3("uSunPos", mat.uSunPos);
-    mat.shader.setVec3("uAmbientLighting", mat.uAmbientLighting);
-    mat.shader.setVec3("uNightAmbientBoost", mat.uNightAmbientBoost);
-    mat.shader.setVec3("uEmissiveLighting", mat.uEmissiveLighting);
-
-    if (mat.uUseTexture) {
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, mat.textureID);
-    }
-
-    if (mat.uUseDayNightBlend) {
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, mat.textureID2);
-    }
-
+    bindMaterial(cam);
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);

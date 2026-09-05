@@ -36,7 +36,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
             .shader = gEng.getShader("entity"), 
             .textureID = gEng.getTextureID("uvmap/sun"),
             .uBaseColor = glm::vec4(1, 1, 0, 1),
-            .uEmissiveLighting = glm::vec3(1.0f)
+            .uEmissiveLighting = glm::vec3(1000.0f)
         },
         toRender(R_SUN)
     ));
@@ -55,7 +55,8 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
             .textureID = gEng.getTextureID("uvmap/earth_day"),
             .textureID2 = gEng.getTextureID("uvmap/earth_night"),
             .uBaseColor = glm::vec4(0, 0, 1, 1), 
-            .uUseDayNightBlend = true
+            .uUseDayNightBlend = true,
+            .atmosphere = AtmosphereParams{ .enabled = true }
         },
         toRender(R_EARTH)
     ));
@@ -72,7 +73,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         Material{
             .shader = gEng.getShader("entity"),
             .textureID = gEng.getTextureID("uvmap/moon"),
-            .uBaseColor = glm::vec4(1, 1, 1, 1)
+            .uBaseColor = glm::vec4(1, 1, 1, 1),
         },
         toRender(R_MOON)
     ));

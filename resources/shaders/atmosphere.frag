@@ -4,7 +4,8 @@ in vec2 UV;
 
 out vec4 FragColor;
 
-uniform vec3 uPlanetCenterRel; // planet center relative to camera — the ONLY position uniform
+uniform vec3 uEntityPos; 
+uniform vec3 uCamPos;
 uniform sampler2D uSceneDepth;
 uniform mat4 uInvProj;
 uniform mat4 uInvView;
@@ -36,15 +37,16 @@ void main() {
     viewPos /= viewPos.w;
     vec3 rd = normalize((uInvView * vec4(viewPos.xyz, 0.0)).xyz);
     vec3 ro = vec3(0.0); // camera is the local origin, always
+    vec3 planetCenterRel = uEntityPos - uCamPos;
 
     float tAtmos0, tAtmos1;
-    if (!raySphere(ro, rd, uPlanetCenterRel, uAtmosRadius, tAtmos0, tAtmos1) || tAtmos1 < 0.0) {
+    if (!raySphere(ro, rd, planetCenterRel, uAtmosRadius, tAtmos0, tAtmos1) || tAtmos1 < 0.0) {
         discard;
     }
     tAtmos0 = max(tAtmos0, 0.0);
 
     float tPlanet0, tPlanet1;
-    bool hitPlanet = raySphere(ro, rd, uPlanetCenterRel, uPlanetRadius, tPlanet0, tPlanet1);
+    bool hitPlanet = raySphere(ro, rd, planetCenterRel, uPlanetRadius, tPlanet0, tPlanet1);
     float rayEnd = (hitPlanet && tPlanet0 > 0.0) ? tPlanet0 : tAtmos1;
 
     // scene depth reprojected into camera-relative space via rotation only — no absolute positions
@@ -68,7 +70,7 @@ void main() {
     float t = tAtmos0;
     for (int i = 0; i < uNumSamples; i++) {
         vec3 samplePos = ro + rd * (t + segLen * 0.5);
-        float height = length(samplePos - uPlanetCenterRel) - uPlanetRadius;
+        float height = length(samplePos - planetCenterRel) - uPlanetRadius;
 
         float hr = exp(-height / uRayleighScaleHeight) * segLen;
         float hm = exp(-height / uMieScaleHeight) * segLen;
@@ -76,7 +78,7 @@ void main() {
         opticalDepthM += hm;
 
         float lt0, lt1;
-        if (!raySphere(samplePos, uSunDir, uPlanetCenterRel, uAtmosRadius, lt0, lt1)) {
+        if (!raySphere(samplePos, uSunDir, planetCenterRel, uAtmosRadius, lt0, lt1)) {
             continue;
         }
 
@@ -87,7 +89,7 @@ void main() {
         float lt = lt0;
         for (int j = 0; j < uNumLightSamples; j++) {
             vec3 lightSamplePos = samplePos + uSunDir * (lt + lightSegLen * 0.5);
-            float lHeight = length(lightSamplePos - uPlanetCenterRel) - uPlanetRadius;
+            float lHeight = length(lightSamplePos - planetCenterRel) - uPlanetRadius;
             if (lHeight < 0.0) { inShadow = true; break; }
             lightOpticalDepthR += exp(-lHeight / uRayleighScaleHeight) * lightSegLen;
             lightOpticalDepthM += exp(-lHeight / uMieScaleHeight) * lightSegLen;

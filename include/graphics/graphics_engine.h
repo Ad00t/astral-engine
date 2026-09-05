@@ -18,14 +18,18 @@ private:
 
     GLuint hdrFBO = 0;
     GLuint atmoFBO = 0;
-    GLuint hdrColorTex = 0;
+    GLuint bloomFBO[2];
+
+    GLuint hdrColorTex[2];
     GLuint hdrDepthTex = 0;
-    int fbWidth = 0, fbHeight = 0;
+    GLuint bloomColorTex[2];
+
+    int width = 0, height = 0;
     GLuint quadVAO = 0, quadVBO = 0;
 
-    void createHDRFramebuffer(int width, int height);
-    void destroyHDRFramebuffer();
-    void resizeHDRFramebuffer(int width, int height);
+    void createRenderTargets(int width, int height);
+    void destroyRenderTargets();
+    void resizeRenderTargets(int width, int height);
     void setupScreenQuad();
 
 public:

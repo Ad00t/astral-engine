@@ -62,8 +62,9 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
     // Load shaders
     shaders["entity"] = Shader("entity.vert", "entity.frag");
     shaders["skybox"] = Shader("skybox.vert", "skybox.frag");
-    shaders["atmosphere"] = Shader("atmosphere.vert", "atmosphere.frag");
-    shaders["tonemap"] = Shader("tonemap.vert", "tonemap.frag");
+    shaders["atmosphere"] = Shader("fullscreen.vert", "atmosphere.frag");
+    shaders["bloom"] = Shader("fullscreen.vert", "bloom.frag");
+    shaders["tonemap"] = Shader("fullscreen.vert", "tonemap.frag");
 
     // Load textures
     // stbi_set_flip_vertically_on_load(true);
@@ -73,7 +74,6 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
     loadTexture("uvmap/moon");
     loadTexture("cubemap/spacebox");
 
-    int width, height; 
     glfwGetFramebufferSize(window, &width, &height);
     glViewport(0, 0, width, height);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -86,7 +86,7 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
 
     cam = std::make_unique<Camera>(window, 5e7f, 1e6f, 1e22f, 0.01f, 0.01f, 10.0f);
 
-    createHDRFramebuffer(width, height);
+    createRenderTargets(width, height);
     setupScreenQuad();
 
     printf("Graphics engine initialized\n");
@@ -98,18 +98,17 @@ GraphicsEngine::~GraphicsEngine() {
 
 void GraphicsEngine::renderScene(Simulation& sim) {
     cam->update();
-    if (cam->width != fbWidth || cam->height != fbHeight) {
-        resizeHDRFramebuffer(cam->width, cam->height);
+    if (cam->width != width || cam->height != height) {
+        resizeRenderTargets(cam->width, cam->height);
     }
 
-    // Main scene objects pass
+    // Geometry pass
 
     glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
-    glViewport(0, 0, fbWidth, fbHeight);
+    glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glm::vec3 sunPos = sim.renderables["sun"]->pos;
-    glm::vec3 earthPos = sim.renderables["earth"]->pos;
     for (auto& [id, rend] : sim.renderables) {
         rend->setSunPos(sunPos);
         rend->draw(*cam);
@@ -118,7 +117,7 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     // Atmospheric scattering pass
 
     glBindFramebuffer(GL_FRAMEBUFFER, atmoFBO);
-    glViewport(0, 0, fbWidth, fbHeight);
+    glViewport(0, 0, width, height);
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
@@ -128,43 +127,67 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     atmo.use();
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, hdrDepthTex);
-    glm::vec3 planetCenterRelative = earthPos - cam->position;
-    atmo.setVec3("uPlanetCenterRel", planetCenterRelative);
     atmo.setInt("uSceneDepth", 0);
     atmo.setMat4("uInvProj", glm::inverse(cam->projection));
     atmo.setMat4("uInvView", glm::inverse(cam->view));
-    atmo.setFloat("uPlanetRadius", sim.renderables["earth"]->radius);
-    atmo.setFloat("uAtmosRadius", sim.renderables["earth"]->radius * 3 * 1.0157f);
-    atmo.setVec3("uSunDir", glm::normalize(sunPos - earthPos));
-    // float K = toRender(1.0f);
-    float K = 1e-2;
-    atmo.setFloat("uRayleighScaleHeight", 8500.0f * K);
-    atmo.setFloat("uMieScaleHeight", 1200.0f * K);
-    atmo.setVec3("uRayleighCoeff", glm::vec3(5.5e-6f, 13.0e-6f, 22.4e-6f) / K);
-    atmo.setFloat("uMieCoeff", 21e-6f / K);
-    atmo.setInt("uNumSamples", 16);
-    atmo.setInt("uNumLightSamples", 8);
-    atmo.setFloat("uMieG", 0.758f);
+    atmo.setVec3("uCamPos", cam->position);
 
     glBindVertexArray(quadVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    for (auto& [id, rend] : sim.renderables) {
+        const AtmosphereParams& atmos = rend->getMaterial().atmosphere;
+        if (!atmos.enabled) continue;
+        atmo.setVec3("uEntityPos", rend->pos);
+        atmo.setFloat("uPlanetRadius", rend->radius);
+        atmo.setFloat("uAtmosRadius", rend->radius * atmos.radiusMultiplier);
+        atmo.setVec3("uSunDir", glm::normalize(sunPos - rend->pos));
+        atmo.setFloat("uRayleighScaleHeight", atmos.rayleighScaleHeight);
+        atmo.setFloat("uMieScaleHeight", atmos.mieScaleHeight);
+        atmo.setVec3("uRayleighCoeff", atmos.rayleighCoeff);
+        atmo.setFloat("uMieCoeff", atmos.mieCoeff);
+        atmo.setInt("uNumSamples", atmos.numSamples);
+        atmo.setInt("uNumLightSamples", atmos.numLightSamples);
+        atmo.setFloat("uMieG", atmos.mieG);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
     glBindVertexArray(0);
+
     glDisable(GL_BLEND);
     glDepthMask(GL_TRUE);
     glEnable(GL_DEPTH_TEST);
 
-    // Tonemapping pass
+    // Bloom pass
+
+    bool horizontal = true;
+    int numBloomPasses = 10;
+    Shader& bloomShader = shaders["bloom"];
+    bloomShader.use();
+    for (int i = 0; i < numBloomPasses; i++) {
+        glBindFramebuffer(GL_FRAMEBUFFER, bloomFBO[horizontal]); 
+        bloomShader.setBool("uHorizontal", horizontal);
+        glBindTexture(
+            GL_TEXTURE_2D, i == 0 ? hdrColorTex[1] : bloomColorTex[!horizontal]
+        ); 
+        glBindVertexArray(quadVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(0);
+        horizontal = !horizontal;
+    }
+
+    // Composite + tonemapping pass
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDisable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    Shader& tm = shaders["tonemap"];
-    tm.use();
+    Shader& tonemapShader = shaders["tonemap"];
+    tonemapShader.use();
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, hdrColorTex);
-    tm.setInt("uHDRBuffer", 0);
-    tm.setFloat("uExposure", 1.0f);
+    glBindTexture(GL_TEXTURE_2D, hdrColorTex[0]);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, bloomColorTex[numBloomPasses % 2]);
+    tonemapShader.setInt("uHDRColorTex", 0);
+    tonemapShader.setInt("uBloomColorTex", 1);
+    tonemapShader.setFloat("uExposure", 1.0f);
 
     glBindVertexArray(quadVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -182,29 +205,40 @@ void GraphicsEngine::cleanup() {
 #if defined(_WIN32)
     timeEndPeriod(1); // Clean up before exiting
 #endif
-    destroyHDRFramebuffer();
+    destroyRenderTargets();
     glfwDestroyWindow(window);
     glfwTerminate();
 }
 
-void GraphicsEngine::createHDRFramebuffer(int width, int height) {
-    fbWidth = width;
-    fbHeight = height;
+void GraphicsEngine::createRenderTargets(int w, int h) {
+    width = w;
+    height = h;
 
     glGenFramebuffers(1, &hdrFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
 
-    // Color: floating point so scattering can exceed 1.0 without clipping
-    glGenTextures(1, &hdrColorTex);
-    glBindTexture(GL_TEXTURE_2D, hdrColorTex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, hdrColorTex, 0);
+    // Color: 1 for FragColor 2 for BrightColor
+
+    glGenTextures(2, hdrColorTex);
+    for (int i = 0; i < 2; i++) {
+        glBindTexture(GL_TEXTURE_2D, hdrColorTex[i]);
+        glTexImage2D(
+            GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL
+        );
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        // attach texture to framebuffer
+        glFramebufferTexture2D(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, hdrColorTex[i], 0
+        );
+    }  
+    GLuint attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    glDrawBuffers(2, attachments);  
 
     // Depth as a TEXTURE (not a renderbuffer) so the atmosphere pass can sample it
+
     glGenTextures(1, &hdrDepthTex);
     glBindTexture(GL_TEXTURE_2D, hdrDepthTex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0,
@@ -218,27 +252,51 @@ void GraphicsEngine::createHDRFramebuffer(int width, int height) {
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    // Atmosphere
+
     glGenFramebuffers(1, &atmoFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, atmoFBO);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, hdrColorTex, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, hdrColorTex[0], 0);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
         fprintf(stderr, "Atmosphere framebuffer incomplete\n");
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // Bloom
+
+    glGenFramebuffers(2, bloomFBO);
+    glGenTextures(2, bloomColorTex);
+    for (int i = 0; i < 2; i++) {
+        glBindFramebuffer(GL_FRAMEBUFFER, bloomFBO[i]);
+        glBindTexture(GL_TEXTURE_2D, bloomColorTex[i]);
+        glTexImage2D(
+            GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL
+        );
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloomColorTex[i], 0
+        );
+    }
+
 }
 
-void GraphicsEngine::destroyHDRFramebuffer() {
-    glDeleteTextures(1, &hdrColorTex);
-    glDeleteTextures(1, &hdrDepthTex);
+void GraphicsEngine::destroyRenderTargets() {
     glDeleteFramebuffers(1, &hdrFBO);
     glDeleteFramebuffers(1, &atmoFBO);
+    glDeleteFramebuffers(2, bloomFBO);
+    glDeleteTextures(2, hdrColorTex);
+    glDeleteTextures(1, &hdrDepthTex);
+    glDeleteTextures(2, bloomColorTex);
 }
 
-void GraphicsEngine::resizeHDRFramebuffer(int width, int height) {
+void GraphicsEngine::resizeRenderTargets(int w, int h) {
     if (width == 0 || height == 0) return;
-    if (width == fbWidth && height == fbHeight) return;
-    destroyHDRFramebuffer();
-    createHDRFramebuffer(width, height);
+    if (width == w && height == h) return;
+    destroyRenderTargets();
+    createRenderTargets(w, h);
 }
 
 void GraphicsEngine::setupScreenQuad() {

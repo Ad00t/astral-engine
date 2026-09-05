@@ -4,8 +4,9 @@ in vec2 UV;
 
 out vec4 FragColor;
 
-uniform sampler2D uHDRBuffer;
-uniform float uExposure;
+uniform sampler2D uHDRColorTex;
+uniform sampler2D uBloomColorTex;
+uniform float uExposure = 1.0f;
 
 vec3 ACESFilm(vec3 x) {
     float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
@@ -13,8 +14,9 @@ vec3 ACESFilm(vec3 x) {
 }
 
 void main() {
-    vec3 hdrColor = texture(uHDRBuffer, UV).rgb * uExposure;
-    vec3 mapped = ACESFilm(hdrColor);
-    mapped = pow(mapped, vec3(1.0/2.2)); // gamma correct
-    FragColor = vec4(mapped, 1.0);
+    vec3 hdrColor = texture(uHDRColorTex, UV).rgb * uExposure;
+    vec3 bloomColor = texture(uBloomColorTex, UV).rgb * uExposure;
+    vec3 tonemapped = ACESFilm(hdrColor + bloomColor);
+    tonemapped = pow(tonemapped, vec3(1.0/2.2)); // gamma correct
+    FragColor = vec4(tonemapped, 1.0);
 }
