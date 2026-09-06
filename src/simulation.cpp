@@ -100,7 +100,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         toRenderUnits(R_SC)
     ));
     rigidbodies.emplace("spacecraft", RigidBody(
-        glm::dvec3(1.496e11, 0, R_EARTH + 100),
+        glm::dvec3(1.496e11, 0, R_EARTH + 1000000),
         glm::dvec3(0, 3.0e4, 0), 
         glm::quat(1, 0, 0, 0),
         glm::dvec3(0, 0, 0),

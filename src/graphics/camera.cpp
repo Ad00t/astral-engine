@@ -59,7 +59,7 @@ Camera::~Camera() {
 void Camera::setTarget(Renderable* newTarget) {
     target = newTarget;
     minRadius = 1.5f * target->renderRadius;
-    maxRadius = 100.0f * target->renderRadius;
+    maxRadius = 1000.0f * target->renderRadius;
     radius = glm::clamp(minRadius * 5.0f, minRadius, maxRadius);
 }
 

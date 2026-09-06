@@ -31,10 +31,11 @@ void GUI::newFrame() {
 void GUI::drawElements(Simulation& sim, Camera& cam) {
     ImGui::SetNextWindowPos(ImVec2(10, 10));
     ImGui::SetNextWindowBgAlpha(0.3f);
-    ImGui::Begin("Options", nullptr, ImGuiWindowFlags_NoDecoration | 
-                                     ImGuiWindowFlags_AlwaysAutoResize |
-                                     ImGuiWindowFlags_NoFocusOnAppearing |
-                                     ImGuiWindowFlags_NoNav);
+    ImGui::Begin("Options", nullptr, 
+                 ImGuiWindowFlags_NoDecoration | 
+                 ImGuiWindowFlags_AlwaysAutoResize |
+                 ImGuiWindowFlags_NoFocusOnAppearing |
+                 ImGuiWindowFlags_NoNav);
     
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
     
@@ -42,8 +43,7 @@ void GUI::drawElements(Simulation& sim, Camera& cam) {
        btn_paused = !btn_paused; 
     }
     
-    ImGui::SliderFloat("Sim Speed", &slider_sim_speed, 0, 1e6f, "%.3fx", 
-                       ImGuiSliderFlags_None & ~ImGuiSliderFlags_WrapAround);
+    ImGui::SliderFloat("Sim Speed", &slider_sim_speed, 0, 1e6f, "%.3fx", ImGuiSliderFlags_Logarithmic);
 
     if (ImGui::BeginCombo("Camera Target", camTargetID.c_str())) {
         for (const auto& [id, rb] : sim.rigidbodies) {
