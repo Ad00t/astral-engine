@@ -16,9 +16,9 @@
 #define offsetof(t, d) __builtin_offsetof(t, d)
 #endif
 
-Renderable::Renderable(Material mat, float radius)
-    : VAO(0), VBO(0), EBO(0), mat(mat), pos(glm::vec3(0.0f)), radius(radius), model(glm::mat4(1.0f)), indexCount(0), 
-      vertices(std::vector<Vertex>()), indices(std::vector<uint32_t>()) {
+Renderable::Renderable(Material mat, float renderRadius)
+    : VAO(0), VBO(0), EBO(0), mat(mat), realPos(glm::dvec3(0.0)), renderPos(glm::vec3(0.0f)), renderRadius(renderRadius), 
+      model(glm::mat4(1.0f)), indexCount(0), vertices(std::vector<Vertex>()), indices(std::vector<uint32_t>()) {
 }
 
 Renderable::~Renderable() {
@@ -89,8 +89,8 @@ glm::mat4& Renderable::getModel() {
     return model;
 }
 
-void Renderable::setSunPos(const glm::vec3& sunPos) {
-    mat.uSunPos = sunPos;
+void Renderable::setSunRenderPos(const glm::vec3& sunRenderPos) {
+    mat.uSunPos = sunRenderPos;
 }
 
 // SKYBOX
@@ -145,9 +145,11 @@ SkyBox::SkyBox(Material mat)
 }
 
 void SkyBox::draw(const Camera& cam) {
-    glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(cam.view)); // strip translation, keep rotation
+    glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(cam.view));
 
-    glDepthFunc(GL_LEQUAL);
+    glDepthFunc(GL_GEQUAL);
+    glDepthMask(GL_FALSE);
+
     mat.shader.use();
     mat.shader.setMat4("view", viewNoTranslation);
     mat.shader.setMat4("projection", cam.projection);
@@ -155,31 +157,62 @@ void SkyBox::draw(const Camera& cam) {
     glBindVertexArray(VAO);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, mat.textureID);
+
     glDrawArrays(GL_TRIANGLES, 0, 36);
+
     glBindVertexArray(0);
-    glDepthFunc(GL_LESS);
+
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_GREATER); 
 }
 
 // CUBE
 
 static const std::vector<Vertex> cubeVertices = {
-    { { -0.5f, -0.5f, -0.5f } },
-    { {  0.5f, -0.5f, -0.5f } },
-    { {  0.5f,  0.5f, -0.5f } },
-    { { -0.5f,  0.5f, -0.5f } },
-    { { -0.5f, -0.5f,  0.5f } },
-    { {  0.5f, -0.5f,  0.5f } },
-    { {  0.5f,  0.5f,  0.5f } },
-    { { -0.5f,  0.5f,  0.5f } }
+    // Front (+Z)
+    { {-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f} },
+    { { 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f} },
+    { { 0.5f,  0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f} },
+    { {-0.5f,  0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f} },
+
+    // Back (-Z)
+    { { 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f} },
+    { {-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f} },
+    { {-0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f} },
+    { { 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f} },
+
+    // Left (-X)
+    { {-0.5f, -0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} },
+    { {-0.5f, -0.5f,  0.5f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f} },
+    { {-0.5f,  0.5f,  0.5f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} },
+    { {-0.5f,  0.5f, -0.5f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f} },
+
+    // Right (+X)
+    { { 0.5f, -0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} },
+    { { 0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f} },
+    { { 0.5f,  0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} },
+    { { 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f} },
+
+    // Top (+Y)
+    { {-0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f} },
+    { { 0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f} },
+    { { 0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f} },
+    { {-0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f} },
+
+    // Bottom (-Y)
+    { {-0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f} },
+    { { 0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f} },
+    { { 0.5f, -0.5f,  0.5f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f} },
+    { {-0.5f, -0.5f,  0.5f}, {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f} },
 };
 
 static const std::vector<uint32_t> cubeIndices = {
-    0,1,2, 2,3,0,
-    4,5,6, 6,7,4,
-    0,4,7, 7,3,0,
-    1,5,6, 6,2,1,
-    3,2,6, 6,7,3,
-    0,1,5, 5,4,0
+    0,  1,  2,  2,  3,  0,   // front
+    4,  5,  6,  6,  7,  4,   // back
+    8,  9,  10, 10, 11, 8,   // left
+    12, 13, 14, 14, 15, 12,  // right
+    16, 17, 18, 18, 19, 16,  // top
+    20, 21, 22, 22, 23, 20,  // bottom
 };
 
 Cube::Cube(Material mat, float sideLength)
@@ -197,48 +230,46 @@ void Cube::draw(const Camera& cam) {
 // SPHERE
 
 // helper to generate sphere vertices/indices
-static void generateSphere(float radius, uint32_t sectorCount, uint32_t stackCount,
-                            std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
-    float x, y, z, xy;
-    float nx, ny, nz, lengthInv = 1.0f / radius;
-    float u, v;
+static void generateSphere(uint32_t sectorCount, uint32_t stackCount, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
+    const float radius = 1.0f;
 
     for (uint32_t i = 0; i <= stackCount; ++i) {
-        float stackAngle = M_PI / 2 - i * M_PI / stackCount;
-        xy = radius * cosf(stackAngle);
-        z  = radius * sinf(stackAngle);
+        float stackAngle = M_PI / 2.0f - i * M_PI / stackCount;
+        float xy = cosf(stackAngle);
+        float z = sinf(stackAngle);
 
         for (uint32_t j = 0; j <= sectorCount; ++j) {
-            float sectorAngle = j * 2 * M_PI / sectorCount;
-            x = xy * cosf(sectorAngle);
-            y = xy * sinf(sectorAngle);
+            float sectorAngle = j * 2.0f * M_PI / sectorCount;
 
-            // normal = position on a sphere centered at origin, normalized
-            nx = x * lengthInv;
-            ny = y * lengthInv;
-            nz = z * lengthInv;
+            float x = xy * cosf(sectorAngle);
+            float y = xy * sinf(sectorAngle);
 
-            // uv
-            u = (float)j / sectorCount;
-            v = (float)i / stackCount;
+            glm::vec3 position(x, y, z);
+            glm::vec3 normal = glm::normalize(position);
 
-            vertices.push_back({ glm::vec3(x, y, z), glm::vec3(nx, ny, nz), glm::vec2(u, v) });
+            float u = static_cast<float>(j) / sectorCount;
+            float v = static_cast<float>(i) / stackCount;
+
+            vertices.push_back({
+                position,
+                normal,
+                glm::vec2(u, v)
+            });
         }
     }
 
-    // indices
-    for (int i = 0; i < stackCount; ++i) {
-        int k1 = i * (sectorCount + 1); // beginning of stack
-        int k2 = k1 + sectorCount + 1;  // beginning of next stack
+    for (uint32_t i = 0; i < stackCount; ++i) {
+        uint32_t k1 = i * (sectorCount + 1);
+        uint32_t k2 = k1 + sectorCount + 1;
 
-        for (int j = 0; j < sectorCount; ++j, ++k1, ++k2) {
+        for (uint32_t j = 0; j < sectorCount; ++j, ++k1, ++k2) {
             if (i != 0) {
                 indices.push_back(k1);
                 indices.push_back(k2);
                 indices.push_back(k1 + 1);
             }
 
-            if (i != (stackCount - 1)) {
+            if (i != stackCount - 1) {
                 indices.push_back(k1 + 1);
                 indices.push_back(k2);
                 indices.push_back(k2 + 1);
@@ -251,7 +282,7 @@ Sphere::Sphere(Material mat, float radius)
     : Renderable(mat, radius) {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-    generateSphere(radius, 256, 256, vertices, indices);
+    generateSphere(256, 256, vertices, indices);
     setupMesh(vertices, indices);
 }
 

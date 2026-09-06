@@ -1,12 +1,13 @@
 #version 410 core
+
+in vec3 UV;
+
 out vec4 FragColor;
 
-in vec3 TexCoords;
-
 uniform samplerCube skybox;
+uniform float uBrightness = 0.5f;
 
 void main() {    
-    vec3 color = texture(skybox, TexCoords).rgb;
-    color = max(color - vec3(0.05), vec3(0.0));
+    vec3 color = texture(skybox, UV).rgb * uBrightness;
     FragColor = vec4(color, 1.0);
 }

@@ -78,13 +78,15 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
     glViewport(0, 0, width, height);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
+    glClearDepth(0.0f);       // "far" is now 0, not 1
+    glDepthFunc(GL_GREATER);  // closer geometry now has a LARGER depth value, not smaller
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
 #if defined(_WIN32)
     timeBeginPeriod(1); // Sets the minimum OS sleep granularity to 1ms
 #endif
 
-    cam = std::make_unique<Camera>(window, 5e7f, 1e6f, 1e22f, 0.01f, 0.01f, 10.0f);
+    cam = std::make_unique<Camera>(window, 5e7f, 1e6f, 1e22f, 0.01f, 0.01f, 0.1f);
 
     createRenderTargets(width, height);
     setupScreenQuad();
@@ -108,11 +110,30 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glm::vec3 sunPos = sim.renderables["sun"]->pos;
     for (auto& [id, rend] : sim.renderables) {
-        rend->setSunPos(sunPos);
+        glm::vec3 relPos = toRenderUnits(rend->realPos - cam->realPos);
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), relPos) * rend->rotation;
+        model = glm::scale(model, glm::vec3(rend->renderRadius));
+        rend->setModel(model);
+        rend->renderPos = relPos;
+    }
+
+    for (auto& [id, rend] : sim.renderables) {
+        if (id == "spacebox") continue;
+        rend->setSunRenderPos(sim.renderables["sun"]->renderPos);
         rend->draw(*cam);
     }
+    sim.renderables["spacebox"]->draw(*cam);
+
+    // glBindFramebuffer(GL_READ_FRAMEBUFFER, hdrFBO);
+    // glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    // glBlitFramebuffer(
+    //     0, 0, width, height,
+    //     0, 0, width, height,
+    //     GL_COLOR_BUFFER_BIT,
+    //     GL_NEAREST
+    // );
+    // return;
 
     // Atmospheric scattering pass
 
@@ -130,16 +151,15 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     atmo.setInt("uSceneDepth", 0);
     atmo.setMat4("uInvProj", glm::inverse(cam->projection));
     atmo.setMat4("uInvView", glm::inverse(cam->view));
-    atmo.setVec3("uCamPos", cam->position);
 
     glBindVertexArray(quadVAO);
     for (auto& [id, rend] : sim.renderables) {
         const AtmosphereParams& atmos = rend->getMaterial().atmosphere;
         if (!atmos.enabled) continue;
-        atmo.setVec3("uEntityPos", rend->pos);
-        atmo.setFloat("uPlanetRadius", rend->radius);
-        atmo.setFloat("uAtmosRadius", rend->radius * atmos.radiusMultiplier);
-        atmo.setVec3("uSunDir", glm::normalize(sunPos - rend->pos));
+        atmo.setVec3("uPlanetPosRel", toRenderUnits(rend->realPos - cam->realPos));
+        atmo.setFloat("uPlanetRadius", rend->renderRadius);
+        atmo.setFloat("uAtmosRadius", rend->renderRadius * atmos.radiusMultiplier);
+        atmo.setVec3("uSunDir", glm::normalize(glm::vec3(sim.renderables["sun"]->realPos - rend->realPos)));
         atmo.setFloat("uRayleighScaleHeight", atmos.rayleighScaleHeight);
         atmo.setFloat("uMieScaleHeight", atmos.mieScaleHeight);
         atmo.setVec3("uRayleighCoeff", atmos.rayleighCoeff);

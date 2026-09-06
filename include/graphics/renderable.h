@@ -37,10 +37,10 @@ struct Material {
    
     // entity params 
     glm::vec4 uBaseColor = glm::vec4(1.0f);
+    bool uUseTexture = false;
     int uTextureMap = 0;
-    bool uUseTexture = true;
-    int uNightTextureMap = 1;
     bool uUseDayNightBlend = false;
+    int uNightTextureMap = 1;
     glm::vec3 uSunPos = glm::vec3(0.0f);
     glm::vec3 uAmbientLighting = glm::vec3(0.02f);
     glm::vec3 uNightAmbientBoost = glm::vec3(0.8f);
@@ -63,10 +63,12 @@ protected:
     void bindMaterial(const Camera& cam);
 
 public:
-    glm::vec3 pos;
-    float radius;
+    glm::dvec3 realPos;
+    glm::vec3 renderPos;
+    glm::mat4 rotation;
+    float renderRadius;
 
-    Renderable(Material mat, float radius);
+    Renderable(Material mat, float renderRadius);
     Renderable(const Renderable&) = delete;
     Renderable& operator=(const Renderable&) = delete;
     Renderable(Renderable&&) noexcept;
@@ -78,7 +80,7 @@ public:
     void setModel(const glm::mat4& model);
     glm::mat4& getModel();
     const Material& getMaterial() const { return mat; }
-    void setSunPos(const glm::vec3& sunPos);
+    void setSunRenderPos(const glm::vec3& sunPos);
 };
 
 class SkyBox : public Renderable {

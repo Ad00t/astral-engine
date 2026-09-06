@@ -1,15 +1,11 @@
 #include "opengl_includes.h"
-#include <unordered_map>
 #include <string>
-#include <memory>
-#include "physics/rigidbody.h"
 #include "simulation.h"
-#include "graphics/renderable.h"
 #include "graphics/camera.h"
 
 class GUI {
 private:
-    std::string camTargetID = "earth";
+    std::string camTargetID = "spacecraft";
 
 public:
     bool initialized = true;

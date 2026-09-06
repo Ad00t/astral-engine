@@ -17,7 +17,8 @@ public:
     float zoomSpeed;
 
     GLFWwindow* window;
-    glm::vec3 position;
+    glm::dvec3 realPos;
+    glm::vec3 renderPos;
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 projection; 

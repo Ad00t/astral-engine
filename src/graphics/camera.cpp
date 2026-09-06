@@ -11,8 +11,8 @@
 #include <simulation.h>
 
 Camera::Camera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed)
-    : window(window), radius(toRender(initialRealRadius)), minRadius(toRender(minRealRadius)), maxRadius(toRender(maxRealRadius)),
-     orbitSpeed(orbitSpeed), panSpeed(panSpeed), zoomSpeed(zoomSpeed), position(glm::vec3(0.0f)) {
+    : window(window), radius(toRenderUnits(initialRealRadius)), minRadius(toRenderUnits(minRealRadius)), maxRadius(toRenderUnits(maxRealRadius)),
+     orbitSpeed(orbitSpeed), panSpeed(panSpeed), zoomSpeed(zoomSpeed), realPos(glm::dvec3(0.0)), renderPos(glm::vec3(0.0f)), target(nullptr) {
 
     glfwGetWindowSize(window, &width, &height);
     glfwSetWindowUserPointer(window, this);
@@ -58,23 +58,43 @@ Camera::~Camera() {
 
 void Camera::setTarget(Renderable* newTarget) {
     target = newTarget;
-    float minCamRadius = target->radius;
-    minRadius = 1.5 * minCamRadius;
-    maxRadius = 1000 * minCamRadius;
-    radius = glm::clamp(minRadius * 5, minRadius, maxRadius);
+    minRadius = 1.5f * target->renderRadius;
+    maxRadius = 100.0f * target->renderRadius;
+    radius = glm::clamp(minRadius * 5.0f, minRadius, maxRadius);
+}
+
+// Reversed-Z infinite perspective, standard OpenGL -1..1 clip convention (no glClipControl needed).
+// Near plane maps to NDC z = +1, far/infinity maps to NDC z = -1 (reversed from usual).
+static glm::mat4 infinitePerspectiveReversedZ(float fovY, float aspect, float zNear) {
+    float f = 1.0f / tanf(fovY * 0.5f);
+    glm::mat4 m(0.0f);
+    m[0][0] = f / aspect;
+    m[1][1] = f;
+    m[2][2] = 1.0f;
+    m[2][3] = -1.0f;
+    m[3][2] = 2.0f * zNear;
+    return m;
 }
 
 void Camera::update() {
-    position = glm::vec3(
+    if (target == nullptr) return;
+
+    radius = glm::clamp(radius, minRadius, maxRadius);
+    glm::dvec3 realOffset = toRealUnits(glm::vec3(
         radius * cos(elevation) * cos(azimuth),
         radius * cos(elevation) * sin(azimuth),
         radius * sin(elevation)
-    ) + target->pos;
-    
-    model = glm::mat4(1.0f);
-    view = glm::lookAt(position, target->pos, glm::vec3(0,0,1));
-    float dynamicNear = glm::max(radius * 0.001f, 1e-4f);
-    projection = glm::infinitePerspective(glm::radians(60.0f), float(width) / float(height), dynamicNear);
+    ));
+    glm::dvec3 camRealPos = target->realPos + realOffset;
+    realPos = camRealPos;
+
+    // double subtraction first (safe cancellation), then scale+cast down
+    glm::vec3 relTargetPos = toRenderUnits(target->realPos - camRealPos);
+    view = glm::lookAt(glm::vec3(0.0f), relTargetPos, glm::vec3(0,0,1));
+
+    float dynamicNear = glm::max(radius * 0.001f, 1e-2f);
+    minRadius = glm::max(target->renderRadius * 1.2f, dynamicNear * 2.0f);
+    projection = infinitePerspectiveReversedZ(glm::radians(60.0f), float(width) / float(height), dynamicNear);
 }
 
 void Camera::cleanup() {
@@ -92,7 +112,6 @@ void Camera::handleMouseMove(GLFWwindow* win, double x, double y) {
     if (dragging) {
         azimuth = std::fmod(azimuth + dx*orbitSpeed, 2*M_PI);
         elevation = glm::clamp(elevation - dy*orbitSpeed, -float(M_PI)/2 + 0.01f, float(M_PI)/2 - 0.01f);
-        // printf("dx:%.1f dy:%.1f az:%.2f el:%.2f\n", dx, dy, glm::degrees(azimuth), glm::degrees(elevation)); 
     }
 
     lastX = x;
@@ -111,7 +130,8 @@ void Camera::handleMouseButton(GLFWwindow* win, int button, int action, int mods
 }
 
 void Camera::handleMouseScroll(GLFWwindow* win, double xoffset, double yoffset) { 
-    radius = glm::clamp(radius - (float) yoffset*zoomSpeed*(0.1f*target->radius), minRadius, maxRadius);
+    float zoomFactor = powf(1.0f - zoomSpeed, (float) yoffset);
+    radius = glm::clamp(radius * zoomFactor, minRadius, maxRadius);
 }
 
 void Camera::handleKeyboard(GLFWwindow* win, int key, int scancode, int action, int mods) {
