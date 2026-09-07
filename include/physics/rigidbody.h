@@ -18,14 +18,12 @@ public:
     // Eventually want to replace this with a bounding box / 
     // inertial mass distribution, unified with the Renderable component.
     // This will be important for accurate torque modeling
-    double radius;          // m
     double mass;            // kg
 
     RigidBody(glm::dvec3 pos = glm::dvec3(0.0),
             glm::dvec3 vel = glm::dvec3(0.0),
             glm::quat rot = glm::quat(1.0, 0.0, 0.0, 0.0),
             glm::dvec3 ang_vel = glm::dvec3(0.0),
-            double radius = 1.0, 
             double mass = 1.0);
 
     virtual ~RigidBody() = default;

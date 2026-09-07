@@ -63,16 +63,14 @@ void Camera::setTarget(Renderable* newTarget) {
     radius = glm::clamp(minRadius * 5.0f, minRadius, maxRadius);
 }
 
-// Reversed-Z infinite perspective, standard OpenGL -1..1 clip convention (no glClipControl needed).
-// Near plane maps to NDC z = +1, far/infinity maps to NDC z = -1 (reversed from usual).
 static glm::mat4 infinitePerspectiveReversedZ(float fovY, float aspect, float zNear) {
     float f = 1.0f / tanf(fovY * 0.5f);
     glm::mat4 m(0.0f);
     m[0][0] = f / aspect;
     m[1][1] = f;
-    m[2][2] = 1.0f;
+    m[2][2] = 0.0f;     // Maps infinity to exactly 0.0
     m[2][3] = -1.0f;
-    m[3][2] = 2.0f * zNear;
+    m[3][2] = zNear;    // Maps near plane to 1.0
     return m;
 }
 
@@ -92,7 +90,7 @@ void Camera::update() {
     glm::vec3 relTargetPos = toRenderUnits(target->realPos - camRealPos);
     view = glm::lookAt(glm::vec3(0.0f), relTargetPos, glm::vec3(0,0,1));
 
-    float dynamicNear = glm::max(radius * 0.001f, 1e-2f);
+    float dynamicNear = glm::max(radius * 0.001f, 0.01f);
     minRadius = glm::max(target->renderScale * 1.2f, dynamicNear * 2.0f);
     projection = infinitePerspectiveReversedZ(glm::radians(60.0f), float(width) / float(height), dynamicNear);
 }

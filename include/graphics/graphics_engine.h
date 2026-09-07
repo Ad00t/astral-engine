@@ -11,6 +11,9 @@
 #include <unordered_map>
 #include <memory>
 
+constexpr int BLOOM_DOWNSAMPLE = 2;
+constexpr int NUM_BLOOM_PASSES = 6;
+
 class GraphicsEngine {
 private:
     std::unordered_map<std::string, Shader> shaders;
@@ -25,6 +28,8 @@ private:
     GLuint bloomColorTex[2];
 
     int width = 0, height = 0;
+    int bloomWidth, bloomHeight;
+    
     GLuint quadVAO = 0, quadVBO = 0;
 
     void createRenderTargets(int width, int height);

@@ -1,4 +1,4 @@
-#version 410 core
+#version 450 core
 
 in vec2 UV;
 
@@ -7,7 +7,7 @@ out vec4 FragColor;
 uniform sampler2D uHDRColorTex;
 uniform bool uHorizontal;
 uniform float uWeight[5] = float[] (0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
-uniform float uBloomSpread = 1.5f;
+uniform float uBloomSpread = 1.0f;
 
 void main() {             
     vec2 texelSize = 1.0 / textureSize(uHDRColorTex, 0); // gets size of single texel

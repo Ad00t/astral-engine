@@ -19,7 +19,7 @@ const double M_EARTH = 5.972e24;
 const double R_MOON = 1.7375e6;
 const double M_MOON = 7.35e22;
 
-const double R_SC = 5.0;
+const double S_SC = 5.0;
 const double M_SC = 50.0;
 
 Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
@@ -50,7 +50,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         glm::dvec3(0, 0, 0), 
         glm::quat(0.568933, 0.059228, 0.305817, 0.761107),
         glm::dvec3(3.505831e-7, -8.893373e-8, 2.842410e-6),
-        R_SUN, M_SUN 
+        M_SUN 
     ));
     colliders.emplace("sun", std::make_unique<SphereCollider>(
         rigidbodies["sun"],
@@ -76,11 +76,11 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         glm::dvec3(0, 3.0e4, 0), 
         glm::quat(0.750882, -0.155769, 0.130365, 0.628425),
         glm::dvec3(4.47e-21, 2.900637e-5, 6.690385e-5),
-        R_EARTH, M_EARTH
+        M_EARTH
     ));
     colliders.emplace("earth", std::make_unique<SphereCollider>(
         rigidbodies["earth"],
-        0.1,
+        0.0,
         R_EARTH
     ));
    
@@ -99,7 +99,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         glm::dvec3(0, 3.0e4 + 1.022e3, 0), 
         glm::quat(0.328257, 0.000045, 0.375904, 0.866570),
         glm::dvec3(-9.432401e-11, -9.992006e-10, 2.661699e-6),
-        R_MOON, M_MOON 
+        M_MOON 
     ));
     colliders.emplace("moon", std::make_unique<SphereCollider>(
         rigidbodies["moon"],
@@ -113,19 +113,19 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
             .shader = gEng.getShader("entity"),
             .uBaseColor = glm::vec4(1, 0, 1, 1),
         },
-        toRenderUnits(R_SC)
+        toRenderUnits(S_SC)
     ));
     rigidbodies.emplace("spacecraft", RigidBody(
-        glm::dvec3(1.496e11 - (R_EARTH + 100), 0, 0),
+        glm::dvec3(1.496e11 - (R_EARTH * 3), 0, 0),
         glm::dvec3(0, 3.0e4, 0), 
         glm::quat(1, 0, 0, 0),
         glm::dvec3(0, 0, 0),
-        R_SC, M_SC 
+        M_SC 
     ));
     colliders.emplace("spacecraft", std::make_unique<OBBCollider>(
         rigidbodies["spacecraft"],
-        0.1,
-        glm::dvec3(R_SC/2, R_SC/2, R_SC/2)
+        0.0,
+        glm::dvec3(S_SC/2, S_SC/2, S_SC/2)
     ));
 }
 

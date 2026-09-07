@@ -7,6 +7,10 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 
+static constexpr double MAX_UPDATE_DT = 6000.0;
+static constexpr double G = 6.67430e-11;
+static constexpr double COLLISION_BIAS = 0.5;
+
 class PhysicsEngine {
 public:
     UpdateLimiter updateLimiter;

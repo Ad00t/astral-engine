@@ -11,8 +11,8 @@
 #include <chrono>
 #include <mutex>
 
-#define PHYSICS_MAX_FPS         120
-#define GRAPHICS_MAX_FPS        240
+#define PHYSICS_MAX_FPS         60
+#define GRAPHICS_MAX_FPS        120 
 
 std::unique_ptr<GraphicsEngine> gEng;
 std::unique_ptr<PhysicsEngine> pEng;

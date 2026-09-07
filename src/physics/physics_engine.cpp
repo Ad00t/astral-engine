@@ -7,15 +7,12 @@
 #include <glm/gtx/norm.hpp>
 #include <glm/gtx/string_cast.hpp>
 
-const double G = 6.67430e-11;
-const double COLLISION_BIAS = 0.5;
-
 PhysicsEngine::PhysicsEngine(double maxUpdateRate)
     : updateLimiter(maxUpdateRate) {}
 
 PhysicsEngine::~PhysicsEngine() {}
 
-void PhysicsEngine::update(Simulation& sim, double dT) {
+void updateImpl(Simulation& sim, double dT) {
     // Compute forces
     for (auto it1 = sim.rigidbodies.begin(); it1 != sim.rigidbodies.end(); ++it1) {
         auto& [id1, rb1] = *it1;
@@ -39,35 +36,6 @@ void PhysicsEngine::update(Simulation& sim, double dT) {
         rb.acc = rb.acc_new;
         rb.acc_new = glm::dvec3(0.0);
     }
-    
-    // Check collisions
-    for (auto it1 = sim.colliders.begin(); it1 != sim.colliders.end(); ++it1) {
-        auto& [id1, coll1] = *it1;
-        if (!sim.rigidbodies.contains(id1)) continue;
-        RigidBody& rb1 = sim.rigidbodies.at(id1);
-        auto it2 = it1; ++it2;
-        for (; it2 != sim.colliders.end(); ++it2) {
-            auto& [id2, coll2] = *it2;
-            if (!sim.rigidbodies.contains(id2)) continue;
-            RigidBody& rb2 = sim.rigidbodies.at(id2);
-
-            glm::dvec3 mtv = coll1->computeMTV(coll2.get());
-            if (glm::length2(mtv) <= 1e-12) continue;
-        
-            glm::dvec3 relative_speed = rb2.vel - rb1.vel;
-            glm::dvec3 collision_normal = glm::normalize(mtv);
-            double constraint_speed = glm::dot(collision_normal, relative_speed);
-            if (constraint_speed > 0) { 
-                double reduced_mass = 1.0 / (1.0/rb1.mass + 1.0/rb2.mass);
-                double elasticity = coll1->restitution * coll2->restitution;
-                double j = (constraint_speed * (1.0 + elasticity)
-                            + COLLISION_BIAS / dT * glm::length(mtv)) * reduced_mass;
-                glm::dvec3 impulse = j * collision_normal;
-                rb1.vel += impulse / rb1.mass;
-                rb2.vel -= impulse / rb2.mass;
-            }
-        }
-    }
 
     // Integrate positions & rotations
     for (auto& [id, rb] : sim.rigidbodies) {
@@ -87,10 +55,68 @@ void PhysicsEngine::update(Simulation& sim, double dT) {
         }
         rb.rot = glm::normalize(dq * rb.rot);
     }
-
+    
     // Update collider geometry
     for (auto& [id, coll] : sim.colliders) {
         if (!sim.rigidbodies.contains(id)) continue;
         coll->updateFromRigidBody(sim.rigidbodies.at(id));
+    }
+
+    // Check collisions
+    for (auto it1 = sim.colliders.begin(); it1 != sim.colliders.end(); ++it1) {
+        auto& [id1, coll1] = *it1;
+        if (!sim.rigidbodies.contains(id1)) continue;
+        RigidBody& rb1 = sim.rigidbodies.at(id1);
+        auto it2 = it1; ++it2;
+        for (; it2 != sim.colliders.end(); ++it2) {
+            auto& [id2, coll2] = *it2;
+            if (!sim.rigidbodies.contains(id2)) continue;
+            RigidBody& rb2 = sim.rigidbodies.at(id2);
+
+            glm::dvec3 mtv = coll1->computeMTV(coll2.get());
+            if (glm::length2(mtv) <= 1e-12) continue;
+        
+            glm::dvec3 relative_vel = rb2.vel - rb1.vel;
+            glm::dvec3 collision_normal = glm::normalize(mtv);
+            double constraint_speed = glm::dot(collision_normal, relative_vel);
+            if (constraint_speed > 0) { 
+                double total_mass = rb1.mass + rb2.mass;
+                double reduced_mass = 1.0 / (1.0/rb1.mass + 1.0/rb2.mass);
+
+                rb1.pos += mtv * rb2.mass / total_mass;
+                rb2.pos -= mtv * rb1.mass / total_mass;
+
+                // double elasticity = coll1->restitution * coll2->restitution;
+                // double j = (constraint_speed * (1.0 + elasticity)
+                //             + COLLISION_BIAS / dT * glm::length(mtv)) * reduced_mass;
+                // glm::dvec3 impulse = j * collision_normal;
+                // rb1.vel += impulse / rb1.mass;
+                // rb2.vel -= impulse / rb2.mass;
+
+                double elasticity = coll1->restitution * coll2->restitution;
+                double j = constraint_speed * (1.0 + elasticity) * reduced_mass;
+                
+                glm::dvec3 impulse = j * collision_normal;
+                rb1.vel += impulse / rb1.mass;
+                rb2.vel -= impulse / rb2.mass;
+            }
+        }
+    }
+
+    glm::dvec3 d = sim.colliders["earth"]->centerPos - sim.colliders["spacecraft"]->centerPos;
+    printf("%f %f %f\n", d.x, d.y, d.z);
+}
+
+void PhysicsEngine::update(Simulation& sim, double dT) {
+    if (dT <= MAX_UPDATE_DT) {
+        updateImpl(sim, dT);
+        return;
+    }
+
+    double dTtotal = dT;
+    while (dTtotal > 0) {
+        dT = std::min(dTtotal, MAX_UPDATE_DT);
+        updateImpl(sim, dT);
+        dTtotal -= dT;
     }
 }

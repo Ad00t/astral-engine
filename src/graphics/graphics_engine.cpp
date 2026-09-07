@@ -26,7 +26,7 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
     }
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #ifdef __APPLE__
@@ -50,6 +50,7 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
         exit(EXIT_FAILURE);
     }
     printf("OpenGL %s\n", glGetString(GL_VERSION));
+    glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 
 #ifndef __APPLE__
     glEnable(GL_DEBUG_OUTPUT);
@@ -178,10 +179,10 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     // Bloom pass
 
     bool horizontal = true;
-    int numBloomPasses = 10;
     Shader& bloomShader = shaders["bloom"];
     bloomShader.use();
-    for (int i = 0; i < numBloomPasses; i++) {
+    glViewport(0, 0, bloomWidth, bloomHeight);
+    for (int i = 0; i < NUM_BLOOM_PASSES; i++) {
         glBindFramebuffer(GL_FRAMEBUFFER, bloomFBO[horizontal]); 
         bloomShader.setBool("uHorizontal", horizontal);
         glBindTexture(
@@ -201,10 +202,11 @@ void GraphicsEngine::renderScene(Simulation& sim) {
 
     Shader& tonemapShader = shaders["tonemap"];
     tonemapShader.use();
+    glViewport(0, 0, width, height);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, hdrColorTex[0]);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, bloomColorTex[numBloomPasses % 2]);
+    glBindTexture(GL_TEXTURE_2D, bloomColorTex[NUM_BLOOM_PASSES % 2]);
     tonemapShader.setInt("uHDRColorTex", 0);
     tonemapShader.setInt("uBloomColorTex", 1);
     tonemapShader.setFloat("uExposure", 1.0f);
@@ -231,8 +233,10 @@ void GraphicsEngine::cleanup() {
 }
 
 void GraphicsEngine::createRenderTargets(int w, int h) {
-    width = w;
+    width = w; 
     height = h;
+    bloomWidth = width / BLOOM_DOWNSAMPLE;
+    bloomHeight = height / BLOOM_DOWNSAMPLE;
 
     glGenFramebuffers(1, &hdrFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
@@ -290,7 +294,7 @@ void GraphicsEngine::createRenderTargets(int w, int h) {
         glBindFramebuffer(GL_FRAMEBUFFER, bloomFBO[i]);
         glBindTexture(GL_TEXTURE_2D, bloomColorTex[i]);
         glTexImage2D(
-            GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL
+            GL_TEXTURE_2D, 0, GL_RGBA16F, bloomWidth, bloomHeight, 0, GL_RGBA, GL_FLOAT, NULL
         );
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
