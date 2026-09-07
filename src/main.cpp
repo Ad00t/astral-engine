@@ -2,15 +2,14 @@
 #include "opengl_includes.h"
 #include "graphics/graphics_engine.h"
 #include "physics/physics_engine.h"
-#include "simulation.h"
+#include "core/simulation.h"
 #include "utils.h"
-#include "gui.h"
-#include "update_limiter.h"
+#include "core/gui.h"
+#include "core/update_limiter.h"
 #include <memory>
 #include <thread>
 #include <chrono>
 #include <mutex>
-#include <atomic>
 
 #define PHYSICS_MAX_FPS         120
 #define GRAPHICS_MAX_FPS        240
@@ -31,8 +30,8 @@ void physicsThreadFunc() {
         lastUpdateTime = pEng->updateLimiter.updateStart;
         
         std::unique_lock<std::mutex> lock(sim->stateMutex);
-        pEng->updateRigidBodies(*sim, dT);
-        sim->syncPhysicsToRender();
+        pEng->update(*sim, dT);
+        sim->syncPhysicsUpdate();
         lock.unlock();
 
         pEng->updateLimiter.endUpdate();

@@ -66,9 +66,9 @@ public:
     glm::dvec3 realPos;
     glm::vec3 renderPos;
     glm::mat4 rotation;
-    float renderRadius;
+    float renderScale;
 
-    Renderable(Material mat, float renderRadius);
+    Renderable(Material mat, float renderScale);
     Renderable(const Renderable&) = delete;
     Renderable& operator=(const Renderable&) = delete;
     Renderable(Renderable&&) noexcept;

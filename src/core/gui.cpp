@@ -1,8 +1,8 @@
-#include "gui.h"
+#include "core/gui.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 #include "imgui.h"
-#include "simulation.h"
+#include "core/simulation.h"
 #include "opengl_includes.h"
 
 GUI::GUI(GLFWwindow* window) {

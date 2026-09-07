@@ -14,7 +14,7 @@ vec3 ACESFilm(vec3 x) {
 }
 
 void main() {
-    vec3 hdrColor = texture(uHDRColorTex, UV).rgb * uExposure;
+    vec3 hdrColor = texture(uHDRColorTex, UV).rgb;
     vec3 bloomColor = texture(uBloomColorTex, UV).rgb * uExposure;
     vec3 tonemapped = ACESFilm(hdrColor + bloomColor);
     tonemapped = pow(tonemapped, vec3(1.0/2.2)); // gamma correct

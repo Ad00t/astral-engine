@@ -16,8 +16,8 @@
 #define offsetof(t, d) __builtin_offsetof(t, d)
 #endif
 
-Renderable::Renderable(Material mat, float renderRadius)
-    : VAO(0), VBO(0), EBO(0), mat(mat), realPos(glm::dvec3(0.0)), renderPos(glm::vec3(0.0f)), renderRadius(renderRadius), 
+Renderable::Renderable(Material mat, float renderScale)
+    : VAO(0), VBO(0), EBO(0), mat(mat), realPos(glm::dvec3(0.0)), renderPos(glm::vec3(0.0f)), renderScale(renderScale), 
       model(glm::mat4(1.0f)), indexCount(0), vertices(std::vector<Vertex>()), indices(std::vector<uint32_t>()) {
 }
 

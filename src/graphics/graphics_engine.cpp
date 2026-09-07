@@ -3,7 +3,7 @@
 #include "graphics/shader.h"
 #include "graphics/camera.h"
 #include "graphics/renderable.h"
-#include "update_limiter.h"
+#include "core/update_limiter.h"
 #include "graphics/stb_image.h"
 #include "utils.h"
 #include <GLFW/glfw3.h>
@@ -113,7 +113,7 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     for (auto& [id, rend] : sim.renderables) {
         glm::vec3 relPos = toRenderUnits(rend->realPos - cam->realPos);
         glm::mat4 model = glm::translate(glm::mat4(1.0f), relPos) * rend->rotation;
-        model = glm::scale(model, glm::vec3(rend->renderRadius));
+        model = glm::scale(model, glm::vec3(rend->renderScale));
         rend->setModel(model);
         rend->renderPos = relPos;
     }
@@ -157,8 +157,8 @@ void GraphicsEngine::renderScene(Simulation& sim) {
         const AtmosphereParams& atmos = rend->getMaterial().atmosphere;
         if (!atmos.enabled) continue;
         atmo.setVec3("uPlanetPosRel", toRenderUnits(rend->realPos - cam->realPos));
-        atmo.setFloat("uPlanetRadius", rend->renderRadius);
-        atmo.setFloat("uAtmosRadius", rend->renderRadius * atmos.radiusMultiplier);
+        atmo.setFloat("uPlanetRadius", rend->renderScale);
+        atmo.setFloat("uAtmosRadius", rend->renderScale * atmos.radiusMultiplier);
         atmo.setVec3("uSunDir", glm::normalize(glm::vec3(sim.renderables["sun"]->realPos - rend->realPos)));
         atmo.setFloat("uRayleighScaleHeight", atmos.rayleighScaleHeight);
         atmo.setFloat("uMieScaleHeight", atmos.mieScaleHeight);

@@ -29,11 +29,6 @@ public:
             double mass = 1.0);
 
     virtual ~RigidBody() = default;
-
-    void applyForce(const glm::dvec3& force);
-    void integratePos(double dT);
-    void integrateVel(double dT);
-    void integrateRot(double dT);
 };
 
 #endif

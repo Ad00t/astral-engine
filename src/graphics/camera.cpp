@@ -1,14 +1,14 @@
 #include "graphics/camera.h" 
 #include "graphics/renderable.h"
+#include "core/simulation.h"
+#include "utils.h"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "imgui_impl_glfw.h"
 #include "opengl_includes.h"
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/string_cast.hpp"
-#include "utils.h"
 #include "imgui.h"
 #include <cmath>
-#include <simulation.h>
 
 Camera::Camera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed)
     : window(window), radius(toRenderUnits(initialRealRadius)), minRadius(toRenderUnits(minRealRadius)), maxRadius(toRenderUnits(maxRealRadius)),
@@ -58,8 +58,8 @@ Camera::~Camera() {
 
 void Camera::setTarget(Renderable* newTarget) {
     target = newTarget;
-    minRadius = 1.5f * target->renderRadius;
-    maxRadius = 1000.0f * target->renderRadius;
+    minRadius = 1.5f * target->renderScale;
+    maxRadius = 1000.0f * target->renderScale;
     radius = glm::clamp(minRadius * 5.0f, minRadius, maxRadius);
 }
 
@@ -93,7 +93,7 @@ void Camera::update() {
     view = glm::lookAt(glm::vec3(0.0f), relTargetPos, glm::vec3(0,0,1));
 
     float dynamicNear = glm::max(radius * 0.001f, 1e-2f);
-    minRadius = glm::max(target->renderRadius * 1.2f, dynamicNear * 2.0f);
+    minRadius = glm::max(target->renderScale * 1.2f, dynamicNear * 2.0f);
     projection = infinitePerspectiveReversedZ(glm::radians(60.0f), float(width) / float(height), dynamicNear);
 }
 

@@ -1,8 +1,9 @@
-#include "simulation.h"
+#include "core/simulation.h"
 #include "graphics/camera.h"
 #include "graphics/graphics_engine.h"
 #include "graphics/renderable.h"        
 #include "physics/physics_engine.h"
+#include "physics/collider.h"
 #include "utils.h"
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
@@ -51,6 +52,11 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         glm::dvec3(3.505831e-7, -8.893373e-8, 2.842410e-6),
         R_SUN, M_SUN 
     ));
+    colliders.emplace("sun", std::make_unique<SphereCollider>(
+        rigidbodies["sun"],
+        0.0,
+        R_SUN 
+    ));
 
     // Earth
     renderables.emplace("earth", std::make_unique<Sphere>(
@@ -72,6 +78,11 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         glm::dvec3(4.47e-21, 2.900637e-5, 6.690385e-5),
         R_EARTH, M_EARTH
     ));
+    colliders.emplace("earth", std::make_unique<SphereCollider>(
+        rigidbodies["earth"],
+        0.1,
+        R_EARTH
+    ));
    
     // Moon
     renderables.emplace("moon", std::make_unique<Sphere>(
@@ -90,6 +101,11 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         glm::dvec3(-9.432401e-11, -9.992006e-10, 2.661699e-6),
         R_MOON, M_MOON 
     ));
+    colliders.emplace("moon", std::make_unique<SphereCollider>(
+        rigidbodies["moon"],
+        0.0,
+        R_MOON 
+    ));
 
     // Test spacecraft
     renderables.emplace("spacecraft", std::make_unique<Cube>(
@@ -100,19 +116,22 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         toRenderUnits(R_SC)
     ));
     rigidbodies.emplace("spacecraft", RigidBody(
-        glm::dvec3(1.496e11, 0, R_EARTH + 1000000),
+        glm::dvec3(1.496e11 - (R_EARTH + 100), 0, 0),
         glm::dvec3(0, 3.0e4, 0), 
         glm::quat(1, 0, 0, 0),
         glm::dvec3(0, 0, 0),
         R_SC, M_SC 
     ));
-
-    pEng.initialize(*this);
+    colliders.emplace("spacecraft", std::make_unique<OBBCollider>(
+        rigidbodies["spacecraft"],
+        0.1,
+        glm::dvec3(R_SC/2, R_SC/2, R_SC/2)
+    ));
 }
 
 Simulation::~Simulation() {}
 
-void Simulation::syncPhysicsToRender() {
+void Simulation::syncPhysicsUpdate() {
     for (auto& [id, rb] : rigidbodies) {
         if (!renderables.contains(id)) continue;
         std::unique_ptr<Renderable>& rend = renderables.at(id);

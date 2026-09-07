@@ -5,8 +5,8 @@
 #include "graphics/shader.h"
 #include "graphics/camera.h"
 #include "graphics/renderable.h" 
-#include "simulation.h"
-#include "update_limiter.h"
+#include "core/simulation.h"
+#include "core/update_limiter.h"
 #include <string>
 #include <unordered_map>
 #include <memory>
