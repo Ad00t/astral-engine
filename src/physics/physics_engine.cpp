@@ -14,7 +14,7 @@ PhysicsEngine::PhysicsEngine(double maxUpdateRate)
 PhysicsEngine::~PhysicsEngine() {}
 
 void updateImpl(Simulation& sim, double dT) {
-    // Compute forces
+    // Gravity
     for (auto it1 = sim.rigidbodies.begin(); it1 != sim.rigidbodies.end(); ++it1) {
         auto& [id1, rb1] = *it1;
         auto it2 = it1; ++it2;
@@ -74,38 +74,49 @@ void updateImpl(Simulation& sim, double dT) {
             if (!sim.rigidbodies.contains(id2)) continue;
             RigidBody& rb2 = sim.rigidbodies.at(id2);
 
-            glm::dvec3 mtv = coll1->computeMTV(coll2.get());
-            if (glm::length2(mtv) <= 1e-12) continue;
+            CollisionInfo collision = coll1->detectCollision(coll2.get());
+            if (!collision.isColliding) continue;
+
             glm::dvec3 relative_vel = rb2.vel - rb1.vel;
-            glm::dvec3 collision_normal = glm::normalize(mtv);
+            glm::dvec3 collision_normal = glm::normalize(collision.mtv);
             double constraint_speed = glm::dot(collision_normal, relative_vel);
 
+            double total_mass = rb1.mass + rb2.mass;
+            double inverse_mass = 1.0 / (1.0/rb1.mass + 1.0/rb2.mass);
+
+            rb1.pos += collision.mtv * rb2.mass / total_mass;
+            rb2.pos -= collision.mtv * rb1.mass / total_mass;
+
+            double elasticity = coll1->restitution * coll2->restitution;
+            double j_n = constraint_speed * (1.0 + elasticity) * inverse_mass;
+            glm::dvec3 impulse_normal = j_n * collision_normal;
+
             if (constraint_speed > 0) { 
-                double total_mass = rb1.mass + rb2.mass;
-                double reduced_mass = 1.0 / (1.0/rb1.mass + 1.0/rb2.mass);
-
-                rb1.pos += mtv * rb2.mass / total_mass;
-                rb2.pos -= mtv * rb1.mass / total_mass;
-
-                // double elasticity = coll1->restitution * coll2->restitution;
-                // double j = (constraint_speed * (1.0 + elasticity)
-                //             + COLLISION_BIAS / dT * glm::length(mtv)) * reduced_mass;
-                // glm::dvec3 impulse = j * collision_normal;
-                // rb1.vel += impulse / rb1.mass;
-                // rb2.vel -= impulse / rb2.mass;
-
-                double elasticity = coll1->restitution * coll2->restitution;
-                double j = constraint_speed * (1.0 + elasticity) * reduced_mass;
-                
-                glm::dvec3 impulse = j * collision_normal;
-                rb1.vel += impulse / rb1.mass;
-                rb2.vel -= impulse / rb2.mass;
+                rb1.vel += impulse_normal / rb1.mass;
+                rb2.vel -= impulse_normal / rb2.mass;
             }
+
+            glm::dvec3 v_surf_rb1 = rb1.vel + glm::cross(rb1.ang_vel, collision.contactPoint1 - rb1.pos);
+            glm::dvec3 v_surf_rb2 = rb2.vel + glm::cross(rb2.ang_vel, collision.contactPoint2 - rb2.pos);
+            glm::dvec3 v_surf_rel = v_surf_rb2 - v_surf_rb1;
+            glm::dvec3 v_surf_rel_tan = v_surf_rel - glm::dot(v_surf_rel, collision_normal) * collision_normal;
+            glm::dvec3 collision_tangential(0.0);
+            double tan_len = glm::length(v_surf_rel_tan);
+            if (tan_len > 1e-8) {
+                collision_tangential = v_surf_rel_tan / tan_len;
+            }
+            double j_t_full = glm::dot(-v_surf_rel, collision_tangential) * inverse_mass;
+            double mu = coll1->frictionCoeff * coll2->frictionCoeff;
+            double j_t = std::clamp(j_t_full, -mu * j_n, mu * j_n);
+            glm::dvec3 impulse_tangential = j_t * -collision_tangential; 
+
+            rb1.vel += impulse_tangential / rb1.mass;
+            rb2.vel -= impulse_tangential / rb2.mass;
+
+            // rb1.ang_vel += rb1.invInertiaWorld * glm::cross(collision.contactPoint1 - rb1.pos, impulse_tangential);
+            // rb2.ang_vel -= rb2.invInertiaWorld * glm::cross(collision.contactPoint2 - rb2.pos, impulse_tangential);
         }
     }
-
-    // glm::dvec3 d = sim.colliders["earth"]->centerPos - sim.colliders["iss"]->centerPos;
-    // printf("%f %f %f\n", d.x, d.y, d.z);
 }
 
 void PhysicsEngine::update(Simulation& sim, double dT) {

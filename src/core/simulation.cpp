@@ -42,7 +42,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     ));
     colliders.emplace("sun", std::make_unique<SphereCollider>(
         rigidbodies["sun"],
-        0.0,
+        0.0, 1.0,
         R_SUN 
     ));
     renderables.emplace("sun", std::make_unique<Sphere>(
@@ -65,7 +65,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     ));
     colliders.emplace("earth", std::make_unique<SphereCollider>(
         rigidbodies["earth"],
-        0.0,
+        0.0, 1.0,
         R_EARTH
     ));
     renderables.emplace("earth", std::make_unique<Sphere>(
@@ -90,7 +90,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     ));
     colliders.emplace("moon", std::make_unique<SphereCollider>(
         rigidbodies["moon"],
-        0.0,
+        0.0, 1.0,
         R_MOON 
     ));
     renderables.emplace("moon", std::make_unique<Sphere>(
@@ -119,7 +119,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     ));
     colliders.emplace("iss", std::make_unique<OBBCollider>(
         rigidbodies["iss"],
-        0.0,
+        0.0, 1.0,
         glm::dvec3(109, 73, 45)
     ));
     renderables.emplace("iss", std::make_unique<Model>(
@@ -135,12 +135,12 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         glm::dvec3(1.496e11 - (R_EARTH + 100), 0, 0),
         glm::dvec3(0, 3.0e4, 0), 
         glm::angleAxis(glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
-        glm::dvec3(0, 0.1, 0),
+        glm::dvec3(0, 0, 0),
         5300000 
     ));
     colliders.emplace("starship", std::make_unique<OBBCollider>(
         rigidbodies["starship"],
-        0.0,
+        0.0, 1.0,
         glm::dvec3(9, 51, 9)
     ));
     renderables.emplace("starship", std::make_unique<Model>(
