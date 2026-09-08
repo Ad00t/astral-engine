@@ -7,6 +7,7 @@ in vec2 UV;
 layout (location = 0) out vec4 FragColor;
 layout (location = 1) out vec4 BrightColor;  
 
+uniform bool uIsDebug;
 uniform vec4 uBaseColor;
 uniform sampler2D uTextureMap;
 uniform sampler2D uNightTextureMap;
@@ -18,6 +19,12 @@ uniform vec3 uNightAmbientBoost;
 uniform vec3 uEmissiveLighting;
 
 void main() {
+    if (uIsDebug) {
+        FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(uSunPos - FragPos);
     float sunDot = dot(norm, lightDir);

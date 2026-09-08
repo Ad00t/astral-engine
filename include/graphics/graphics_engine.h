@@ -11,11 +11,6 @@
 #include <unordered_map>
 #include <memory>
 
-constexpr int BLOOM_DOWNSAMPLE = 2;
-constexpr int NUM_BLOOM_PASSES = 6;
-constexpr bool MSAA_ENABLED = true;
-constexpr int MSAA_SAMPLES = 16;
-
 class GraphicsEngine {
 private:
     std::unordered_map<std::string, Shader> shaders;
@@ -43,6 +38,15 @@ private:
     void setupScreenQuad();
 
 public:
+    struct Config {
+        int bloom_downsample = 2;
+        int num_bloom_passes = 6;
+        bool msaa_enabled = true;
+        int msaa_samples = 16;
+        bool debug_mode = true;
+    };
+    Config config;
+
     GLFWwindow* window;
     std::string title;
     std::unique_ptr<Camera> cam;

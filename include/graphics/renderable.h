@@ -37,6 +37,7 @@ struct Material {
     GLuint textureID2;
    
     // entity params 
+    bool uIsDebug = false;
     glm::vec4 uBaseColor = glm::vec4(1.0f);
     bool uUseTexture = false;
     int uTextureMap = 0;
@@ -65,12 +66,17 @@ public:
 
     int materialIndex = 0;
 
-private:
     GLuint VAO = 0, VBO = 0, EBO = 0;
     GLsizei indexCount = 0;
 };
 
 class Renderable {
+private:
+    bool debugInitialized = false;
+    Mesh debugMesh;
+
+    void initDebugGeometry(const Collider* coll);
+
 protected:
     std::vector<Mesh> meshes;
     std::vector<Material> materials;
@@ -81,17 +87,17 @@ public:
     glm::dvec3 realPos = glm::dvec3(0.0);
     glm::vec3 renderPos = glm::vec3(0.0f);
     glm::mat4 rotation = glm::mat4(1.0f);
-    float renderScale;
+    glm::vec3 renderScale = glm::vec3(1.0f);
 
-    Renderable(Material mat, float renderScale); // Single-material shapes              
-    Renderable(std::vector<Material> mats, float renderScale); // Models
+    Renderable(Material mat, glm::vec3 renderScale = glm::vec3(1.0f)); // Single-material shapes              
+    Renderable(std::vector<Material> mats, glm::vec3 renderScale = glm::vec3(1.0f)); // Models
     Renderable(const Renderable&) = delete;
     Renderable& operator=(const Renderable&) = delete;
     Renderable(Renderable&&) noexcept = default;
     Renderable& operator=(Renderable&&) noexcept = default;
     virtual ~Renderable() = default;
 
-    virtual void draw(const Camera& cam); 
+    virtual void draw(const Camera& cam, const Collider* coll); 
     void setModel(const glm::mat4& m);
     glm::mat4& getModel();
     const Material& getMaterial(size_t i = 0) const { return materials.at(i); }
@@ -116,23 +122,23 @@ private:
     Material materialTemplate; // supplies shader + default uniforms (ambient, atmosphere off, etc.)
 
 public:
-    Model(const std::string& path, Material materialTemplate, float renderScale);
+    Model(const std::string& path, Material materialTemplate, glm::vec3 renderScale = glm::vec3(1.0f));
 };
 
 class SkyBox : public Renderable {
 public:
     SkyBox(Material mat);
-    void draw(const Camera& cam) override;
+    void draw(const Camera& cam, const Collider* coll) override;
 };
 
 class Cube : public Renderable {
 public:
-    Cube(Material mat, float sideLength);
+    Cube(Material mat, glm::vec3 renderScale = glm::vec3(1.0f));
 };
 
 class Sphere : public Renderable {
 public:
-    Sphere(Material mat, float radius); 
+    Sphere(Material mat, glm::vec3 renderScale = glm::vec3(1.0f)); 
 };
 
 #endif // RENDERABLE_H

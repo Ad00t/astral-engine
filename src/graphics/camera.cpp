@@ -59,8 +59,9 @@ Camera::~Camera() {
 
 void Camera::setTarget(Collider* newTarget) {
     target = newTarget;
-    minRadius = 1.1f * toRenderUnits(target->getMaxRadius());
-    maxRadius = 1000.0f * toRenderUnits(target->getMaxRadius());
+    float maxTargetRadius = toRenderUnits(target->getMaxRadius()); 
+    minRadius = 1.1f * maxTargetRadius;
+    maxRadius = 1000.0f * maxTargetRadius;
     radius = glm::clamp(minRadius * 3.0f, minRadius, maxRadius);
 }
 
@@ -91,8 +92,9 @@ void Camera::update() {
     glm::vec3 relTargetPos = toRenderUnits(target->centerPos - camRealPos);
     view = glm::lookAt(glm::vec3(0.0f), relTargetPos, glm::vec3(0,0,1));
 
-    float dynamicNear = glm::max(radius * 0.001f, 0.01f);
-    minRadius = glm::max(toRenderUnits(target->getMaxRadius()) * 1.1f, dynamicNear * 2.0f);
+    float dynamicNear = glm::max(radius * 0.001f, 0.001f);
+    float maxTargetRadius = toRenderUnits(target->getMaxRadius()); 
+    minRadius = glm::max(maxTargetRadius * 1.1f, dynamicNear * 2.0f);
     projection = infinitePerspectiveReversedZ(glm::radians(60.0f), float(width) / float(height), dynamicNear);
 }
 

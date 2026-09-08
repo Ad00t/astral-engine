@@ -52,8 +52,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
             .uBaseColor = glm::vec4(1, 1, 0, 1),
             .uUseTexture = true,
             .uEmissiveLighting = glm::vec3(1000.0f)
-        },
-        toRenderUnits(colliders["sun"]->getMaxRadius())
+        }
     ));
 
     // Earth
@@ -78,8 +77,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
             .uUseTexture = true,
             .uUseDayNightBlend = true,
             .atmosphere = AtmosphereParams{ .enabled = true }
-        },
-        toRenderUnits(colliders["earth"]->getMaxRadius())
+        }
     ));
    
     // Moon
@@ -101,8 +99,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
             .textureID = gEng.getTextureID("uvmap/moon"),
             .uBaseColor = glm::vec4(1, 1, 1, 1),
             .uUseTexture = true
-        },
-        toRenderUnits(colliders["moon"]->getMaxRadius())
+        }
     ));
 
     // ISS
@@ -114,7 +111,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
             .i = glm::radians(51.6306),
             .w = glm::radians(115.8922),
             .raan = glm::radians(252.7093),
-            .nu = glm::radians(0.0)
+            .nu = glm::radians(0.1)
         },
         glm::quat(1, 0, 0, 0),
         glm::dvec3(0, 0, 0),
@@ -125,20 +122,33 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         0.0,
         glm::dvec3(109, 73, 45)
     ));
-    // renderables.emplace("iss", std::make_unique<Cube>(
-    //     Material{
-    //         .shader = gEng.getShader("entity"),
-    //         .uBaseColor = glm::vec4(1, 0, 1, 1),
-    //     },
-    //     toRenderUnits(colliders["iss"]->getMaxRadius())
-    // ));
     renderables.emplace("iss", std::make_unique<Model>(
         "resources/assets/models/iss.glb",
         Material{
             .shader = gEng.getShader("entity"),
-            .uAmbientLighting = glm::vec3(0.02f),
         },
-        toRenderUnits(colliders["iss"]->getMaxRadius())
+        glm::vec3(1.5f, 1.5f, 1.3f)
+    ));
+
+    // Starship 
+    rigidbodies.emplace("starship", RigidBody(
+        glm::dvec3(1.496e11 - (R_EARTH + 100), 0, 0),
+        glm::dvec3(0, 3.0e4, 0), 
+        glm::angleAxis(glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+        glm::dvec3(0, 0.1, 0),
+        5300000 
+    ));
+    colliders.emplace("starship", std::make_unique<OBBCollider>(
+        rigidbodies["starship"],
+        0.0,
+        glm::dvec3(9, 51, 9)
+    ));
+    renderables.emplace("starship", std::make_unique<Model>(
+        "resources/assets/models/starship.glb",
+        Material{
+            .shader = gEng.getShader("entity"),
+        },
+        glm::vec3(1.0f, 2.0f, 1.0f)
     ));
 }
 

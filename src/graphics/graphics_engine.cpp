@@ -1,5 +1,6 @@
 #include "graphics/graphics_engine.h"
 #include "glad/gl.h"
+#include "glm/geometric.hpp"
 #include "graphics/shader.h"
 #include "graphics/camera.h"
 #include "graphics/renderable.h"
@@ -109,14 +110,15 @@ void GraphicsEngine::renderScene(Simulation& sim) {
 
     // Geometry pass
 
-    glBindFramebuffer(GL_FRAMEBUFFER, MSAA_ENABLED ? msaaFBO : hdrFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, config.msaa_enabled ? msaaFBO : hdrFBO);
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     for (auto& [id, rend] : sim.renderables) {
         glm::vec3 relPos = toRenderUnits(rend->realPos - cam->realPos);
         glm::mat4 model = glm::translate(glm::mat4(1.0f), relPos) * rend->rotation;
-        model = glm::scale(model, glm::vec3(rend->renderScale));
+        float collMaxRadius = toRenderUnits(sim.colliders.contains(id) ? sim.colliders.at(id)->getMaxRadius() : 1.0);
+        model = glm::scale(model, glm::vec3(collMaxRadius) * rend->renderScale);
         rend->setModel(model);
         rend->renderPos = relPos;
     }
@@ -124,13 +126,14 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     for (auto& [id, rend] : sim.renderables) {
         if (id == "spacebox") continue;
         rend->setSunRenderPos(sim.renderables["sun"]->renderPos);
-        rend->draw(*cam);
+        Collider* coll = (config.debug_mode && sim.colliders.contains(id)) ? sim.colliders.at(id).get() : nullptr;
+        rend->draw(*cam, coll);
     }
-    sim.renderables["spacebox"]->draw(*cam);
+    sim.renderables["spacebox"]->draw(*cam, nullptr);
 
     // MSAA
 
-    if (MSAA_ENABLED) {
+    if (config.msaa_enabled) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, msaaFBO);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, hdrFBO);
         glReadBuffer(GL_COLOR_ATTACHMENT0);
@@ -163,9 +166,10 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     for (auto& [id, rend] : sim.renderables) {
         const AtmosphereParams& atmos = rend->getMaterial().atmosphere;
         if (!atmos.enabled) continue;
+        float collMaxRadius = toRenderUnits(sim.colliders.contains(id) ? sim.colliders.at(id)->getMaxRadius() : 1.0);
         atmo.setVec3("uPlanetPosRel", toRenderUnits(rend->realPos - cam->realPos));
-        atmo.setFloat("uPlanetRadius", rend->renderScale);
-        atmo.setFloat("uAtmosRadius", rend->renderScale * atmos.radiusMultiplier);
+        atmo.setFloat("uPlanetRadius", collMaxRadius);
+        atmo.setFloat("uAtmosRadius", collMaxRadius * atmos.radiusMultiplier);
         atmo.setVec3("uSunDir", glm::normalize(glm::vec3(sim.renderables["sun"]->realPos - rend->realPos)));
         atmo.setFloat("uRayleighScaleHeight", atmos.rayleighScaleHeight);
         atmo.setFloat("uMieScaleHeight", atmos.mieScaleHeight);
@@ -188,7 +192,7 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     Shader& bloomShader = shaders["bloom"];
     bloomShader.use();
     glViewport(0, 0, bloomWidth, bloomHeight);
-    for (int i = 0; i < NUM_BLOOM_PASSES; i++) {
+    for (int i = 0; i < config.num_bloom_passes; i++) {
         glBindFramebuffer(GL_FRAMEBUFFER, bloomFBO[horizontal]); 
         bloomShader.setBool("uHorizontal", horizontal);
         glBindTexture(
@@ -212,7 +216,7 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, hdrColorTex[0]);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, bloomColorTex[NUM_BLOOM_PASSES % 2]);
+    glBindTexture(GL_TEXTURE_2D, bloomColorTex[config.num_bloom_passes % 2]);
     tonemapShader.setInt("uHDRColorTex", 0);
     tonemapShader.setInt("uBloomColorTex", 1);
     tonemapShader.setFloat("uExposure", 1.0f);
@@ -241,8 +245,8 @@ void GraphicsEngine::cleanup() {
 void GraphicsEngine::createRenderTargets(int w, int h) {
     width = w; 
     height = h;
-    bloomWidth = width / BLOOM_DOWNSAMPLE;
-    bloomHeight = height / BLOOM_DOWNSAMPLE;
+    bloomWidth = width / config.bloom_downsample;
+    bloomHeight = height / config.bloom_downsample;
 
     // MSAA FBO
 
@@ -252,7 +256,7 @@ void GraphicsEngine::createRenderTargets(int w, int h) {
     glGenTextures(2, msaaColorTex);
     for (int i = 0; i < 2; i++) {
         glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msaaColorTex[i]);
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAA_SAMPLES, GL_RGBA16F, width, height, GL_TRUE);
+        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, config.msaa_samples, GL_RGBA16F, width, height, GL_TRUE);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D_MULTISAMPLE, msaaColorTex[i], 0);
     }
     GLuint attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
@@ -262,7 +266,7 @@ void GraphicsEngine::createRenderTargets(int w, int h) {
 
     glGenTextures(1, &msaaDepthTex);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msaaDepthTex);
-    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAA_SAMPLES, GL_DEPTH_COMPONENT32F, width, height, GL_TRUE);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, config.msaa_samples, GL_DEPTH_COMPONENT32F, width, height, GL_TRUE);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D_MULTISAMPLE, msaaDepthTex, 0);
 
     // HDR Color: 1 for FragColor 2 for BrightColor

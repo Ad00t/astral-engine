@@ -15,7 +15,7 @@ public:
     virtual void updateFromRigidBody(const RigidBody& rb);
     // Should implement dependent on other Collider's derived type / geometry
     virtual glm::dvec3 computeMTV(Collider* other) = 0; 
-    virtual double getMaxRadius() = 0;
+    virtual const double getMaxRadius() const = 0;
 };
    
 // Oriented bounding box
@@ -28,7 +28,7 @@ public:
 
     void updateFromRigidBody(const RigidBody& rb) override;
     glm::dvec3 computeMTV(Collider* other) override; 
-    double getMaxRadius() override;
+    const double getMaxRadius() const override;
 };
 
 class SphereCollider : public Collider {
@@ -39,7 +39,7 @@ public:
 
     void updateFromRigidBody(const RigidBody& rb) override;
     glm::dvec3 computeMTV(Collider* other) override; 
-    double getMaxRadius() override;
+    const double getMaxRadius() const override;
 };
 
 #endif

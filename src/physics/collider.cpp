@@ -78,7 +78,7 @@ glm::dvec3 OBBCollider::computeMTV(Collider* other) {
     return glm::dvec3(0.0);
 }
 
-double OBBCollider::getMaxRadius() {
+const double OBBCollider::getMaxRadius() const {
     return glm::length(halfExtent);
 }
 
@@ -101,6 +101,6 @@ glm::dvec3 SphereCollider::computeMTV(Collider* other) {
     return glm::dvec3(0.0);
 }
 
-double SphereCollider::getMaxRadius() {
+const double SphereCollider::getMaxRadius() const {
     return radius;
 }
