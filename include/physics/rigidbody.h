@@ -5,28 +5,35 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 
+struct OrbitElements {
+    double a;       // Semi-major axis (m)
+    double e;       // Eccentricity
+    double i;       // Inclination (radians)
+    double w;       // Argument of perigee (radians)
+    double raan;    // Right ascension of ascending node
+    double nu;      // True anomaly
+};
+
 class RigidBody {
 public:
-    glm::dvec3 pos;         // m
-    glm::dvec3 vel;         // m/s
-    glm::dvec3 acc;         // m/s^2
-    glm::dvec3 acc_new;     // m/s^2
+    glm::dvec3 pos = glm::dvec3(0.0);               // m
+    glm::dvec3 vel = glm::dvec3(0.0);               // m/s
+    glm::dvec3 acc = glm::dvec3(0.0);               // m/s^2
+    glm::dvec3 acc_new = glm::dvec3(0.0);           // m/s^2
 
-    glm::quat rot;          // quaternion
-    glm::dvec3 ang_vel;     // rad/s
+    glm::quat rot = glm::quat(1.0, 0.0, 0.0, 0.0);  // quaternion
+    glm::dvec3 ang_vel = glm::dvec3(0.0);           // rad/s
     
-    // Eventually want to replace this with a bounding box / 
-    // inertial mass distribution, unified with the Renderable component.
-    // This will be important for accurate torque modeling
-    double mass;            // kg
+    // TODO: replace with inertial mass distribution
+    double mass = 1.0;                              // kg
 
-    RigidBody(glm::dvec3 pos = glm::dvec3(0.0),
-            glm::dvec3 vel = glm::dvec3(0.0),
-            glm::quat rot = glm::quat(1.0, 0.0, 0.0, 0.0),
-            glm::dvec3 ang_vel = glm::dvec3(0.0),
-            double mass = 1.0);
+    RigidBody(glm::dvec3 pos, glm::dvec3 vel, glm::quat rot, glm::dvec3 ang_vel, double mass);
+    RigidBody(const RigidBody& central, OrbitElements oe, glm::quat rot, glm::dvec3 ang_vel, double mass);
+    RigidBody() = default;
+    ~RigidBody() = default;
 
-    virtual ~RigidBody() = default;
+    void fromOrbitElements(const RigidBody& central, OrbitElements& oe);
+    void toOrbitElements(const RigidBody& central, OrbitElements& oe);
 };
 
 #endif

@@ -1,4 +1,5 @@
 #include "core/simulation.h"
+#include "glm/trigonometric.hpp"
 #include "graphics/camera.h"
 #include "graphics/graphics_engine.h"
 #include "graphics/renderable.h"        
@@ -10,17 +11,17 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <memory>
 
-const double R_SUN = 7.957e8;
-const double M_SUN = 1.989e30;
+constexpr double R_SUN = 7.957e8;
+constexpr double M_SUN = 1.989e30;
 
-const double R_EARTH = 6.371e6;
-const double M_EARTH = 5.972e24;
+constexpr double R_EARTH = 6.378e6;
+constexpr double M_EARTH = 5.972e24;
 
-const double R_MOON = 1.7375e6;
-const double M_MOON = 7.35e22;
+constexpr double R_MOON = 1.7375e6;
+constexpr double M_MOON = 7.35e22;
 
-const double S_SC = 5.0;
-const double M_SC = 50.0;
+constexpr double S_ISS = 5.0;
+constexpr double M_ISS = 50.0;
 
 Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     runPhysics.store(true);
@@ -107,25 +108,39 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         R_MOON 
     ));
 
-    // Test spacecraft
-    renderables.emplace("spacecraft", std::make_unique<Cube>(
+    // Test ISS
+    renderables.emplace("iss", std::make_unique<Cube>(
         Material{
             .shader = gEng.getShader("entity"),
             .uBaseColor = glm::vec4(1, 0, 1, 1),
         },
-        toRenderUnits(S_SC)
+        toRenderUnits(S_ISS)
     ));
-    rigidbodies.emplace("spacecraft", RigidBody(
-        glm::dvec3(1.496e11 - (R_EARTH * 3), 0, 0),
-        glm::dvec3(0, 3.0e4, 0), 
+    rigidbodies.emplace("iss", RigidBody(
+        rigidbodies["earth"],
+        OrbitElements{
+            .a = 6.7975e6,
+            .e = 0.0004984,
+            .i = glm::radians(51.6306),
+            .w = glm::radians(115.8922),
+            .raan = glm::radians(252.7093),
+            .nu = glm::radians(0.0)
+        },
         glm::quat(1, 0, 0, 0),
         glm::dvec3(0, 0, 0),
-        M_SC 
+        M_ISS
     ));
-    colliders.emplace("spacecraft", std::make_unique<OBBCollider>(
-        rigidbodies["spacecraft"],
+    // rigidbodies.emplace("iss", RigidBody(
+    //     glm::dvec3(1.496e11 - (R_EARTH * 3), 0, 0),
+    //     glm::dvec3(0, 3.0e4, 0), 
+    //     glm::quat(1, 0, 0, 0),
+    //     glm::dvec3(0, 0, 0),
+    //     M_ISS 
+    // ));
+    colliders.emplace("iss", std::make_unique<OBBCollider>(
+        rigidbodies["iss"],
         0.0,
-        glm::dvec3(S_SC/2, S_SC/2, S_SC/2)
+        glm::dvec3(S_ISS/2, S_ISS/2, S_ISS/2)
     ));
 }
 

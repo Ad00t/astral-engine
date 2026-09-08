@@ -1,5 +1,6 @@
 #include "physics/physics_engine.h"
 #include "core/simulation.h"
+#include "utils.h"
 #include "glm/geometric.hpp"
 #include <glm/glm.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -75,10 +76,10 @@ void updateImpl(Simulation& sim, double dT) {
 
             glm::dvec3 mtv = coll1->computeMTV(coll2.get());
             if (glm::length2(mtv) <= 1e-12) continue;
-        
             glm::dvec3 relative_vel = rb2.vel - rb1.vel;
             glm::dvec3 collision_normal = glm::normalize(mtv);
             double constraint_speed = glm::dot(collision_normal, relative_vel);
+
             if (constraint_speed > 0) { 
                 double total_mass = rb1.mass + rb2.mass;
                 double reduced_mass = 1.0 / (1.0/rb1.mass + 1.0/rb2.mass);
@@ -103,12 +104,12 @@ void updateImpl(Simulation& sim, double dT) {
         }
     }
 
-    glm::dvec3 d = sim.colliders["earth"]->centerPos - sim.colliders["spacecraft"]->centerPos;
-    printf("%f %f %f\n", d.x, d.y, d.z);
+    // glm::dvec3 d = sim.colliders["earth"]->centerPos - sim.colliders["iss"]->centerPos;
+    // printf("%f %f %f\n", d.x, d.y, d.z);
 }
 
 void PhysicsEngine::update(Simulation& sim, double dT) {
-    if (dT <= MAX_UPDATE_DT) {
+    if (!SHOULD_SUBSTEP_UPDATES || dT <= MAX_UPDATE_DT) {
         updateImpl(sim, dT);
         return;
     }
