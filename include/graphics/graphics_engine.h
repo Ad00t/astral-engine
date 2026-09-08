@@ -13,16 +13,21 @@
 
 constexpr int BLOOM_DOWNSAMPLE = 2;
 constexpr int NUM_BLOOM_PASSES = 6;
+constexpr bool MSAA_ENABLED = true;
+constexpr int MSAA_SAMPLES = 16;
 
 class GraphicsEngine {
 private:
     std::unordered_map<std::string, Shader> shaders;
     std::unordered_map<std::string, GLuint> textures;
 
+    GLuint msaaFBO = 0;
     GLuint hdrFBO = 0;
     GLuint atmoFBO = 0;
     GLuint bloomFBO[2];
 
+    GLuint msaaColorTex[2];
+    GLuint msaaDepthTex = 0;
     GLuint hdrColorTex[2];
     GLuint hdrDepthTex = 0;
     GLuint bloomColorTex[2];

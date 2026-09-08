@@ -83,6 +83,7 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
     glClearDepth(0.0f);       // "far" is now 0, not 1
     glDepthFunc(GL_GREATER);  // closer geometry now has a LARGER depth value, not smaller
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+    glEnable(GL_MULTISAMPLE);
 
 #if defined(_WIN32)
     timeBeginPeriod(1); // Sets the minimum OS sleep granularity to 1ms
@@ -108,7 +109,7 @@ void GraphicsEngine::renderScene(Simulation& sim) {
 
     // Geometry pass
 
-    glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, MSAA_ENABLED ? msaaFBO : hdrFBO);
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -127,15 +128,19 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     }
     sim.renderables["spacebox"]->draw(*cam);
 
-    // glBindFramebuffer(GL_READ_FRAMEBUFFER, hdrFBO);
-    // glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    // glBlitFramebuffer(
-    //     0, 0, width, height,
-    //     0, 0, width, height,
-    //     GL_COLOR_BUFFER_BIT,
-    //     GL_NEAREST
-    // );
-    // return;
+    // MSAA
+
+    if (MSAA_ENABLED) {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, msaaFBO);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, hdrFBO);
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        glReadBuffer(GL_COLOR_ATTACHMENT1);
+        glDrawBuffer(GL_COLOR_ATTACHMENT1);
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    }
 
     // Atmospheric scattering pass
 
@@ -239,10 +244,31 @@ void GraphicsEngine::createRenderTargets(int w, int h) {
     bloomWidth = width / BLOOM_DOWNSAMPLE;
     bloomHeight = height / BLOOM_DOWNSAMPLE;
 
+    // MSAA FBO
+
+    glGenFramebuffers(1, &msaaFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, msaaFBO);
+
+    glGenTextures(2, msaaColorTex);
+    for (int i = 0; i < 2; i++) {
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msaaColorTex[i]);
+        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAA_SAMPLES, GL_RGBA16F, width, height, GL_TRUE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D_MULTISAMPLE, msaaColorTex[i], 0);
+    }
+    GLuint attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+    glDrawBuffers(2, attachments);  
+
+    // Multisampled Depth buffer
+
+    glGenTextures(1, &msaaDepthTex);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, msaaDepthTex);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, MSAA_SAMPLES, GL_DEPTH_COMPONENT32F, width, height, GL_TRUE);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D_MULTISAMPLE, msaaDepthTex, 0);
+
+    // HDR Color: 1 for FragColor 2 for BrightColor
+
     glGenFramebuffers(1, &hdrFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
-
-    // Color: 1 for FragColor 2 for BrightColor
 
     glGenTextures(2, hdrColorTex);
     for (int i = 0; i < 2; i++) {
@@ -259,10 +285,8 @@ void GraphicsEngine::createRenderTargets(int w, int h) {
             GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, hdrColorTex[i], 0
         );
     }  
-    GLuint attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-    glDrawBuffers(2, attachments);  
 
-    // Depth as a TEXTURE (not a renderbuffer) so the atmosphere pass can sample it
+    // HDR depth buffer for atmospheric sampling
 
     glGenTextures(1, &hdrDepthTex);
     glBindTexture(GL_TEXTURE_2D, hdrDepthTex);
@@ -309,9 +333,12 @@ void GraphicsEngine::createRenderTargets(int w, int h) {
 }
 
 void GraphicsEngine::destroyRenderTargets() {
+    glDeleteFramebuffers(1, &msaaFBO);
     glDeleteFramebuffers(1, &hdrFBO);
     glDeleteFramebuffers(1, &atmoFBO);
     glDeleteFramebuffers(2, bloomFBO);
+    glDeleteTextures(2, msaaColorTex);
+    glDeleteTextures(1, &msaaDepthTex);
     glDeleteTextures(2, hdrColorTex);
     glDeleteTextures(1, &hdrDepthTex);
     glDeleteTextures(2, bloomColorTex);

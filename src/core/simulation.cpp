@@ -125,6 +125,13 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         0.0,
         glm::dvec3(109, 73, 45)
     ));
+    // renderables.emplace("iss", std::make_unique<Cube>(
+    //     Material{
+    //         .shader = gEng.getShader("entity"),
+    //         .uBaseColor = glm::vec4(1, 0, 1, 1),
+    //     },
+    //     toRenderUnits(colliders["iss"]->getMaxRadius())
+    // ));
     renderables.emplace("iss", std::make_unique<Model>(
         "resources/assets/models/iss.glb",
         Material{
