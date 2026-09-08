@@ -15,6 +15,7 @@ public:
     virtual void updateFromRigidBody(const RigidBody& rb);
     // Should implement dependent on other Collider's derived type / geometry
     virtual glm::dvec3 computeMTV(Collider* other) = 0; 
+    virtual double getMaxRadius() = 0;
 };
    
 // Oriented bounding box
@@ -23,10 +24,11 @@ public:
     glm::dvec3 halfExtent; // Positive offset of rect3d corner points in local frame
     glm::dquat rot;
 
-    OBBCollider(const RigidBody& rb, double restitution, glm::dvec3 halfExtent);
+    OBBCollider(const RigidBody& rb, double restitution, glm::dvec3 fullExtent);
 
     void updateFromRigidBody(const RigidBody& rb) override;
     glm::dvec3 computeMTV(Collider* other) override; 
+    double getMaxRadius() override;
 };
 
 class SphereCollider : public Collider {
@@ -37,6 +39,7 @@ public:
 
     void updateFromRigidBody(const RigidBody& rb) override;
     glm::dvec3 computeMTV(Collider* other) override; 
+    double getMaxRadius() override;
 };
 
 #endif

@@ -52,10 +52,10 @@ public:
 
     // Texture key is of form <folder>/<name> for both cubemaps and uvmaps
     // e.g. uvmaps/earth_day or cubemaps/spacebox
-    static GLuint loadTextureCubemap(const std::string& path);
-    static GLuint loadTextureFromFile(const std::string& path);
-    static GLuint loadTextureFromMemory(const uint8_t* data, size_t size);
+    static GLuint loadTextureFromFile(const std::string& path, GLenum wrapMode = GL_REPEAT);
+    static GLuint loadTextureFromMemory(const uint8_t* data, size_t size, GLenum wrapMode = GL_REPEAT);
     static GLuint loadTextureFromRawRGBA(const uint8_t* data, int width, int height);
+    static GLuint loadTextureCubemap(const std::string& path);
 
     GLuint& getTextureID(const std::string& key);
 

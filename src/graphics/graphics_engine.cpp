@@ -362,6 +362,58 @@ static GLuint uploadRGBAOrRGB(uint8_t* data, int width, int height, int nrChanne
     return texture;
 }
 
+static GLuint uploadRGBAOrRGB(uint8_t* data, int width, int height, int nrChannels, GLenum wrapMode) {
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    GLenum internalFormat = (nrChannels == 4) ? GL_SRGB8_ALPHA8 : GL_SRGB8;
+    GLenum format = (nrChannels == 4) ? GL_RGBA : (nrChannels == 1 ? GL_RED : GL_RGB);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    return texture;
+}
+
+GLuint GraphicsEngine::loadTextureFromFile(const std::string& path, GLenum wrapMode) {
+    int width, height, nrChannels;
+    uint8_t* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
+    if (!data) {
+        printf("Failed to load texture: '%s'\n", path.c_str());
+        return 0;
+    }
+    GLuint texture = uploadRGBAOrRGB(data, width, height, nrChannels, wrapMode);
+    stbi_image_free(data);
+    return texture;
+}
+
+GLuint GraphicsEngine::loadTextureFromMemory(const uint8_t* bytes, size_t size, GLenum wrapMode) {
+    int width, height, nrChannels;
+    uint8_t* data = stbi_load_from_memory(bytes, static_cast<int>(size), &width, &height, &nrChannels, 0);
+    if (!data) {
+        printf("Failed to decode embedded texture (%zu bytes)\n", size);
+        return 0;
+    }
+    GLuint texture = uploadRGBAOrRGB(data, width, height, nrChannels, wrapMode);
+    stbi_image_free(data);
+    return texture;
+}
+
+GLuint GraphicsEngine::loadTextureFromRawRGBA(const uint8_t* data, int width, int height) {
+    return uploadRGBAOrRGB(const_cast<uint8_t*>(data), width, height, 4);
+}
+
+GLuint& GraphicsEngine::getTextureID(const std::string& key) {
+    return textures.at(key);
+}
+
+Shader& GraphicsEngine::getShader(const std::string& key) {
+    return shaders.at(key);
+}
+
 GLuint GraphicsEngine::loadTextureCubemap(const std::string& path) {
     GLuint texture;
     glGenTextures(1, &texture);
@@ -399,42 +451,6 @@ GLuint GraphicsEngine::loadTextureCubemap(const std::string& path) {
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
     return texture;
-}
-
-GLuint GraphicsEngine::loadTextureFromFile(const std::string& path) {
-    int width, height, nrChannels;
-    uint8_t* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
-    if (!data) {
-        printf("Failed to load texture: '%s'\n", path.c_str());
-        return 0;
-    }
-    GLuint texture = uploadRGBAOrRGB(data, width, height, nrChannels);
-    stbi_image_free(data);
-    return texture;
-}
-
-GLuint GraphicsEngine::loadTextureFromMemory(const uint8_t* bytes, size_t size) {
-    int width, height, nrChannels;
-    uint8_t* data = stbi_load_from_memory(bytes, static_cast<int>(size), &width, &height, &nrChannels, 0);
-    if (!data) {
-        printf("Failed to decode embedded texture (%zu bytes)\n", size);
-        return 0;
-    }
-    GLuint texture = uploadRGBAOrRGB(data, width, height, nrChannels);
-    stbi_image_free(data);
-    return texture;
-}
-
-GLuint GraphicsEngine::loadTextureFromRawRGBA(const uint8_t* data, int width, int height) {
-    return uploadRGBAOrRGB(const_cast<uint8_t*>(data), width, height, 4);
-}
-
-GLuint& GraphicsEngine::getTextureID(const std::string& key) {
-    return textures.at(key);
-}
-
-Shader& GraphicsEngine::getShader(const std::string& key) {
-    return shaders.at(key);
 }
 
 void GraphicsEngine::handleError(int error, const char* description) {

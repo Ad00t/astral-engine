@@ -1,6 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
+#include "physics/collider.h"
 #include "opengl_includes.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -32,13 +33,13 @@ public:
     float azimuth = 0.0f;
     float elevation = 0.0f;
 
-    Renderable* target;
+    Collider* target;
 
     Camera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed);
     ~Camera();
     Camera(const Camera&) = delete;
 
-    void setTarget(Renderable* newTarget);
+    void setTarget(Collider* newTarget);
     void update();
     void cleanup();
 

@@ -20,9 +20,6 @@ constexpr double M_EARTH = 5.972e24;
 constexpr double R_MOON = 1.7375e6;
 constexpr double M_MOON = 7.35e22;
 
-constexpr double S_ISS = 5.0;
-constexpr double M_ISS = 50.0;
-
 Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     runPhysics.store(true);
 
@@ -36,16 +33,6 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     ));
 
     // Sun
-    renderables.emplace("sun", std::make_unique<Sphere>(
-        Material{
-            .shader = gEng.getShader("entity"), 
-            .textureID = gEng.getTextureID("uvmap/sun"),
-            .uBaseColor = glm::vec4(1, 1, 0, 1),
-            .uUseTexture = true,
-            .uEmissiveLighting = glm::vec3(1000.0f)
-        },
-        toRenderUnits(R_SUN)
-    ));
     rigidbodies.emplace("sun", RigidBody(
         glm::dvec3(0, 0, 0), 
         glm::dvec3(0, 0, 0), 
@@ -58,20 +45,18 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         0.0,
         R_SUN 
     ));
-
-    // Earth
-    renderables.emplace("earth", std::make_unique<Sphere>(
+    renderables.emplace("sun", std::make_unique<Sphere>(
         Material{
             .shader = gEng.getShader("entity"), 
-            .textureID = gEng.getTextureID("uvmap/earth_day"),
-            .textureID2 = gEng.getTextureID("uvmap/earth_night"),
-            .uBaseColor = glm::vec4(0, 0, 1, 1), 
+            .textureID = gEng.getTextureID("uvmap/sun"),
+            .uBaseColor = glm::vec4(1, 1, 0, 1),
             .uUseTexture = true,
-            .uUseDayNightBlend = true,
-            .atmosphere = AtmosphereParams{ .enabled = true }
+            .uEmissiveLighting = glm::vec3(1000.0f)
         },
-        toRenderUnits(R_EARTH)
+        toRenderUnits(colliders["sun"]->getMaxRadius())
     ));
+
+    // Earth
     rigidbodies.emplace("earth", RigidBody(
         glm::dvec3(1.496e11, 0, 0),
         glm::dvec3(0, 3.0e4, 0), 
@@ -84,17 +69,20 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         0.0,
         R_EARTH
     ));
+    renderables.emplace("earth", std::make_unique<Sphere>(
+        Material{
+            .shader = gEng.getShader("entity"), 
+            .textureID = gEng.getTextureID("uvmap/earth_day"),
+            .textureID2 = gEng.getTextureID("uvmap/earth_night"),
+            .uBaseColor = glm::vec4(0, 0, 1, 1), 
+            .uUseTexture = true,
+            .uUseDayNightBlend = true,
+            .atmosphere = AtmosphereParams{ .enabled = true }
+        },
+        toRenderUnits(colliders["earth"]->getMaxRadius())
+    ));
    
     // Moon
-    renderables.emplace("moon", std::make_unique<Sphere>(
-        Material{
-            .shader = gEng.getShader("entity"),
-            .textureID = gEng.getTextureID("uvmap/moon"),
-            .uBaseColor = glm::vec4(1, 1, 1, 1),
-            .uUseTexture = true
-        },
-        toRenderUnits(R_MOON)
-    ));
     rigidbodies.emplace("moon", RigidBody(
         glm::dvec3(1.496e11 + 3.84e8, 0, 0),
         glm::dvec3(0, 3.0e4 + 1.022e3, 0), 
@@ -107,16 +95,17 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         0.0,
         R_MOON 
     ));
-
-    // Test ISS
-    renderables.emplace("iss", std::make_unique<Model>(
-        "resources/assets/models/iss.glb",
+    renderables.emplace("moon", std::make_unique<Sphere>(
         Material{
             .shader = gEng.getShader("entity"),
-            .uAmbientLighting = glm::vec3(0.02f),
+            .textureID = gEng.getTextureID("uvmap/moon"),
+            .uBaseColor = glm::vec4(1, 1, 1, 1),
+            .uUseTexture = true
         },
-        toRenderUnits(S_ISS)
+        toRenderUnits(colliders["moon"]->getMaxRadius())
     ));
+
+    // ISS
     rigidbodies.emplace("iss", RigidBody(
         rigidbodies["earth"],
         OrbitElements{
@@ -129,19 +118,20 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         },
         glm::quat(1, 0, 0, 0),
         glm::dvec3(0, 0, 0),
-        M_ISS
+        450000
     ));
-    // rigidbodies.emplace("iss", RigidBody(
-    //     glm::dvec3(1.496e11 - (R_EARTH * 3), 0, 0),
-    //     glm::dvec3(0, 3.0e4, 0), 
-    //     glm::quat(1, 0, 0, 0),
-    //     glm::dvec3(0, 0, 0),
-    //     M_ISS 
-    // ));
     colliders.emplace("iss", std::make_unique<OBBCollider>(
         rigidbodies["iss"],
         0.0,
-        glm::dvec3(S_ISS/2, S_ISS/2, S_ISS/2)
+        glm::dvec3(109, 73, 45)
+    ));
+    renderables.emplace("iss", std::make_unique<Model>(
+        "resources/assets/models/iss.glb",
+        Material{
+            .shader = gEng.getShader("entity"),
+            .uAmbientLighting = glm::vec3(0.02f),
+        },
+        toRenderUnits(colliders["iss"]->getMaxRadius())
     ));
 }
 

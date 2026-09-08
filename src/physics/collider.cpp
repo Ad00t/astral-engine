@@ -60,8 +60,8 @@ void Collider::updateFromRigidBody(const RigidBody& rb) {
     centerPos = rb.pos;
 }
 
-OBBCollider::OBBCollider(const RigidBody& rb, double restitution, glm::dvec3 halfExtent)
-    : Collider(rb, restitution), halfExtent(halfExtent) {}
+OBBCollider::OBBCollider(const RigidBody& rb, double restitution, glm::dvec3 fullExtent)
+    : Collider(rb, restitution), halfExtent(fullExtent / 2.0) {}
 
 void OBBCollider::updateFromRigidBody(const RigidBody& rb) {
     Collider::updateFromRigidBody(rb);
@@ -76,6 +76,10 @@ glm::dvec3 OBBCollider::computeMTV(Collider* other) {
         return computeMTVSphereOBB(sphere, this);
     }
     return glm::dvec3(0.0);
+}
+
+double OBBCollider::getMaxRadius() {
+    return glm::length(halfExtent);
 }
 
 SphereCollider::SphereCollider(const RigidBody& rb, double restitution, double radius)
@@ -95,4 +99,8 @@ glm::dvec3 SphereCollider::computeMTV(Collider* other) {
         
     }
     return glm::dvec3(0.0);
+}
+
+double SphereCollider::getMaxRadius() {
+    return radius;
 }

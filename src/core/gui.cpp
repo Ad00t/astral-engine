@@ -3,6 +3,8 @@
 #include "backends/imgui_impl_opengl3.h"
 #include "imgui.h"
 #include "core/simulation.h"
+#include "utils.h"
+#include <format>
 #include "opengl_includes.h"
 
 GUI::GUI(GLFWwindow* window) {
@@ -37,7 +39,7 @@ void GUI::drawElements(Simulation& sim, Camera& cam) {
                  ImGuiWindowFlags_NoFocusOnAppearing |
                  ImGuiWindowFlags_NoNav);
     
-    ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+    ImGui::Text("FPS: %.0f", ImGui::GetIO().Framerate);
     
     if (ImGui::Button(btn_paused ? "Play" : "Pause")) {
        btn_paused = !btn_paused; 
@@ -46,13 +48,11 @@ void GUI::drawElements(Simulation& sim, Camera& cam) {
     ImGui::SliderFloat("Sim Speed", &slider_sim_speed, 0, 1e6f, "%.3fx", ImGuiSliderFlags_Logarithmic);
 
     if (ImGui::BeginCombo("Camera Target", camTargetID.c_str())) {
-        for (const auto& [id, rb] : sim.rigidbodies) {
+        for (const auto& [id, coll] : sim.colliders) {
             bool isSelected = (id == camTargetID);
             if (ImGui::Selectable(id.c_str(), isSelected)) {
                 camTargetID = id;
-                if (sim.renderables.contains(id)) {
-                    cam.setTarget(sim.renderables.at(id).get());
-                }
+                cam.setTarget(coll.get());
             }
             if (isSelected) {
                 ImGui::SetItemDefaultFocus();
@@ -60,6 +60,8 @@ void GUI::drawElements(Simulation& sim, Camera& cam) {
         }
         ImGui::EndCombo();
     }
+
+    ImGui::Text("Camera Radius: %s m", std::format("{:.5e}", toRealUnits(cam.radius)).c_str());
     
     ImGui::End();
 }

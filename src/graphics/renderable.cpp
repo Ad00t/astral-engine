@@ -157,7 +157,8 @@ void Model::loadModel(const std::string& path) {
         aiProcess_Triangulate |
         aiProcess_GenSmoothNormals |
         aiProcess_JoinIdenticalVertices |
-        aiProcess_CalcTangentSpace);
+        aiProcess_CalcTangentSpace |
+        aiProcess_FlipUVs);
 
     if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode) {
         fprintf(stderr, "Assimp error loading '%s': %s\n", path.c_str(), importer.GetErrorString());
@@ -167,28 +168,30 @@ void Model::loadModel(const std::string& path) {
     size_t slash = path.find_last_of('/');
     directory = (slash == std::string::npos) ? "" : path.substr(0, slash);
 
-    processNode(scene->mRootNode, scene, glm::mat4(1.0f));
+    std::vector<RawMesh> raw;
+    processNode(scene->mRootNode, scene, glm::mat4(1.0f), raw);
+    normalizeAndUpload(raw);
 }
 
-void Model::processNode(aiNode* node, const aiScene* scene, const glm::mat4& parentTransform) {
+void Model::processNode(aiNode* node, const aiScene* scene, const glm::mat4& parentTransform, std::vector<RawMesh>& out) {
     glm::mat4 nodeTransform = parentTransform * aiToGlm(node->mTransformation);
 
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
         aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-        processMesh(mesh, scene, nodeTransform);
+        processMesh(mesh, scene, nodeTransform, out);
     }
     for (unsigned int i = 0; i < node->mNumChildren; i++) {
-        processNode(node->mChildren[i], scene, nodeTransform);
+        processNode(node->mChildren[i], scene, nodeTransform, out);
     }
 }
 
-void Model::processMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& transform) {
+void Model::processMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& transform, std::vector<RawMesh>& out) {
     std::vector<Vertex> vertices;
     vertices.reserve(mesh->mNumVertices);
 
     glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(transform)));
 
-    for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
+    for (size_t i = 0; i < mesh->mNumVertices; i++) {
         glm::vec4 pos = transform * glm::vec4(
             mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z, 1.0f);
 
@@ -208,9 +211,9 @@ void Model::processMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& tra
 
     std::vector<uint32_t> indices;
     indices.reserve(mesh->mNumFaces * 3);
-    for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+    for (size_t i = 0; i < mesh->mNumFaces; i++) {
         const aiFace& face = mesh->mFaces[i];
-        for (unsigned int j = 0; j < face.mNumIndices; j++)
+        for (size_t j = 0; j < face.mNumIndices; j++)
             indices.push_back(face.mIndices[j]);
     }
 
@@ -218,8 +221,8 @@ void Model::processMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& tra
     if (mesh->mMaterialIndex >= 0 && scene->mMaterials) {
         materialIndex = processMaterial(scene->mMaterials[mesh->mMaterialIndex], scene);
     }
-
-    meshes.emplace_back(std::move(vertices), std::move(indices), materialIndex);
+    
+    out.push_back({ std::move(vertices), std::move(indices), materialIndex });
 }
 
 int Model::processMaterial(aiMaterial* aiMat, const aiScene* scene) {
@@ -238,7 +241,7 @@ int Model::processMaterial(aiMaterial* aiMat, const aiScene* scene) {
             if (tex->mHeight == 0) {
                 // Compressed (png/jpg) blob, length in mWidth
                 m.textureID = GraphicsEngine::loadTextureFromMemory(
-                    reinterpret_cast<const uint8_t*>(tex->pcData), tex->mWidth);
+                    reinterpret_cast<const uint8_t*>(tex->pcData), tex->mWidth, GL_CLAMP_TO_EDGE);
             } else {
                 // Uncompressed raw texel data — rare in practice for glTF, but handle it
                 m.textureID = GraphicsEngine::loadTextureFromRawRGBA(
@@ -246,13 +249,36 @@ int Model::processMaterial(aiMaterial* aiMat, const aiScene* scene) {
             }
         } else {
             std::string fullPath = directory.empty() ? p : directory + "/" + p;
-            m.textureID = GraphicsEngine::loadTextureFromFile(fullPath);
+            m.textureID = GraphicsEngine::loadTextureFromFile(fullPath, GL_CLAMP_TO_EDGE);
         }
         m.uUseTexture = true;
     }
 
     materials.push_back(m);
     return static_cast<int>(materials.size() - 1);
+}
+
+void Model::normalizeAndUpload(std::vector<RawMesh>& raw) {
+    glm::vec3 mn(std::numeric_limits<float>::max());
+    glm::vec3 mx(std::numeric_limits<float>::lowest());
+
+    for (const auto& rm : raw)
+        for (const auto& v : rm.vertices) {
+            mn = glm::min(mn, v.pos);
+            mx = glm::max(mx, v.pos);
+        }
+
+    glm::vec3 center = (mn + mx) * 0.5f;
+    glm::vec3 extent = mx - mn;
+    float maxExtent = std::max({ extent.x, extent.y, extent.z });
+    float scaleFactor = (maxExtent > 1e-8f) ? (1.0f / maxExtent) : 1.0f;
+
+    for (auto& rm : raw) {
+        for (auto& v : rm.vertices) {
+            v.pos = (v.pos - center) * scaleFactor;
+        }
+        meshes.emplace_back(std::move(rm.vertices), std::move(rm.indices), rm.materialIndex);
+    }
 }
 
 // SKYBOX

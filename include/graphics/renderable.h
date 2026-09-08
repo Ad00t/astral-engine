@@ -99,16 +99,24 @@ public:
 };
 
 class Model : public Renderable {
-public:
-    Model(const std::string& path, Material materialTemplate, float renderScale);
 private:
+    struct RawMesh {
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
+        int materialIndex;
+    };
+
     void loadModel(const std::string& path);
-    void processNode(aiNode* node, const aiScene* scene, const glm::mat4& parentTransform);
-    void processMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& transform);
+    void processNode(aiNode* node, const aiScene* scene, const glm::mat4& parentTransform, std::vector<RawMesh>& out);
+    void processMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& transform, std::vector<RawMesh>& out);
     int processMaterial(aiMaterial* aiMat, const aiScene* scene);
+    void normalizeAndUpload(std::vector<RawMesh>& raw);
 
     std::string directory;
     Material materialTemplate; // supplies shader + default uniforms (ambient, atmosphere off, etc.)
+
+public:
+    Model(const std::string& path, Material materialTemplate, float renderScale);
 };
 
 class SkyBox : public Renderable {

@@ -9,6 +9,7 @@
 #include "glm/gtx/string_cast.hpp"
 #include "imgui.h"
 #include <cmath>
+#include <numbers>
 
 Camera::Camera(GLFWwindow* window, double initialRealRadius, double minRealRadius, double maxRealRadius, float orbitSpeed, float panSpeed, float zoomSpeed)
     : window(window), radius(toRenderUnits(initialRealRadius)), minRadius(toRenderUnits(minRealRadius)), maxRadius(toRenderUnits(maxRealRadius)),
@@ -56,11 +57,11 @@ Camera::~Camera() {
     cleanup();
 }
 
-void Camera::setTarget(Renderable* newTarget) {
+void Camera::setTarget(Collider* newTarget) {
     target = newTarget;
-    minRadius = 1.5f * target->renderScale;
-    maxRadius = 1000.0f * target->renderScale;
-    radius = glm::clamp(minRadius * 5.0f, minRadius, maxRadius);
+    minRadius = 1.1f * toRenderUnits(target->getMaxRadius());
+    maxRadius = 1000.0f * toRenderUnits(target->getMaxRadius());
+    radius = glm::clamp(minRadius * 3.0f, minRadius, maxRadius);
 }
 
 static glm::mat4 infinitePerspectiveReversedZ(float fovY, float aspect, float zNear) {
@@ -83,15 +84,15 @@ void Camera::update() {
         radius * cos(elevation) * sin(azimuth),
         radius * sin(elevation)
     ));
-    glm::dvec3 camRealPos = target->realPos + realOffset;
+    glm::dvec3 camRealPos = target->centerPos + realOffset;
     realPos = camRealPos;
 
     // double subtraction first (safe cancellation), then scale+cast down
-    glm::vec3 relTargetPos = toRenderUnits(target->realPos - camRealPos);
+    glm::vec3 relTargetPos = toRenderUnits(target->centerPos - camRealPos);
     view = glm::lookAt(glm::vec3(0.0f), relTargetPos, glm::vec3(0,0,1));
 
     float dynamicNear = glm::max(radius * 0.001f, 0.01f);
-    minRadius = glm::max(target->renderScale * 1.2f, dynamicNear * 2.0f);
+    minRadius = glm::max(toRenderUnits(target->getMaxRadius()) * 1.1f, dynamicNear * 2.0f);
     projection = infinitePerspectiveReversedZ(glm::radians(60.0f), float(width) / float(height), dynamicNear);
 }
 
@@ -106,10 +107,11 @@ void Camera::cleanup() {
 void Camera::handleMouseMove(GLFWwindow* win, double x, double y) {
     float dx = float(x - lastX);
     float dy = float(y - lastY);
+    static constexpr float pi = (float) std::numbers::pi;
 
     if (dragging) {
-        azimuth = std::fmod(azimuth + dx*orbitSpeed, 2*M_PI);
-        elevation = glm::clamp(elevation - dy*orbitSpeed, -float(M_PI)/2 + 0.01f, float(M_PI)/2 - 0.01f);
+        azimuth = std::fmod(azimuth + dx*orbitSpeed, 2*pi);
+        elevation = glm::clamp(elevation - dy*orbitSpeed, -float(pi)/2 + 0.01f, float(pi)/2 - 0.01f);
     }
 
     lastX = x;

@@ -44,7 +44,7 @@ int main() {
     sim = std::make_unique<Simulation>(*gEng, *pEng);
     gui = std::make_unique<GUI>(gEng->window);
 
-    gEng->cam->setTarget(sim->renderables.at(gui->getCamTargetID()).get());
+    gEng->cam->setTarget(sim->colliders.at(gui->getCamTargetID()).get());
     physicsThread = std::thread(physicsThreadFunc);
 
     while (!glfwWindowShouldClose(gEng->window)) {
