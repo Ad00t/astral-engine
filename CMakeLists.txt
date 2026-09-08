@@ -15,11 +15,20 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(OpenGL_GL_PREFERENCE GLVND)
 
+# CCache
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER   ${CCACHE_PROGRAM})
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+    message(STATUS "Using ccache for faster compilation.")
+endif()
+
 # GLFW 
 FetchContent_Declare(
     glfw
     GIT_REPOSITORY https://github.com/glfw/glfw.git
     GIT_TAG 3.4
+    GIT_PROGRESS   TRUE
 )
 FetchContent_MakeAvailable(glfw)
 option(GLFW_BUILD_DOCS OFF)
@@ -28,18 +37,28 @@ option(GLFW_BUILD_TESTS OFF)
 option(GLFW_INSTALL OFF)
 
 # GLAD
-add_library(glad STATIC 
-    ${VENDOR_DIR}/glad/src/gl.c
+FetchContent_Declare(
+    glad
+    GIT_REPOSITORY https://github.com/Dav1dde/glad.git
+    GIT_TAG        v2.0.8 
+    SOURCE_SUBDIR  cmake
+    GIT_PROGRESS   TRUE
 )
-target_include_directories(glad PUBLIC 
-    ${VENDOR_DIR}/glad/include
-)
+FetchContent_MakeAvailable(glad)
+glad_add_library(glad_gl_core_45 STATIC LOADER API gl:core=4.5)
+# add_library(glad STATIC 
+#     ${VENDOR_DIR}/glad/src/gl.c
+# )
+# target_include_directories(glad PUBLIC 
+#     ${VENDOR_DIR}/glad/include
+# )
 
 # GLM
 FetchContent_Declare(
 	glm
 	GIT_REPOSITORY	https://github.com/g-truc/glm.git
 	GIT_TAG         1.0.1	
+    GIT_PROGRESS   TRUE
 )
 FetchContent_MakeAvailable(glm)
 
@@ -48,6 +67,7 @@ FetchContent_Declare(
     imgui	
 	GIT_REPOSITORY	https://github.com/ocornut/imgui
 	GIT_TAG         v1.92.2b	
+    GIT_PROGRESS   TRUE
 )
 FetchContent_MakeAvailable(imgui)
 add_library(imgui_lib
@@ -64,6 +84,17 @@ target_include_directories(imgui_lib PUBLIC
 )
 target_link_libraries(imgui_lib PUBLIC glfw)
 
+# AssImp
+FetchContent_Declare(
+    assimp
+    GIT_REPOSITORY https://github.com/assimp/assimp
+    GIT_TAG v6.0.5
+    GIT_PROGRESS   TRUE
+)
+FetchContent_MakeAvailable(assimp)
+option(ASSIMP_BUILD_TESTS off)
+option(ASSIMP_INSTALL off)
+
 # Project
 add_executable(${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME} PUBLIC 
@@ -79,9 +110,10 @@ target_sources(${PROJECT_NAME} PRIVATE
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE
     glfw
-    glad
+    glad_gl_core_45
     glm
     imgui_lib
+    assimp::assimp
     ${CMAKE_DL_LIBS} # Needed for glad - https://stackoverflow.com/a/56842079/2394163
     $<$<PLATFORM_ID:Windows>:winmm>
 )

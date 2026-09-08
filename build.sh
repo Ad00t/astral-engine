@@ -7,4 +7,4 @@ cmake \
     -DCMAKE_C_COMPILER=gcc \
     -GNinja -B build -S .
 
-cmake --build build
+cmake --build build -j
