@@ -1,6 +1,7 @@
 #ifndef RENDERABLE_H
 #define RENDERABLE_H
 
+#include "assimp/scene.h"
 #include "glm/ext/vector_float3.hpp"
 #include "opengl_includes.h"
 #include "graphics/camera.h"
@@ -50,37 +51,64 @@ struct Material {
     AtmosphereParams atmosphere = {};
 };
 
+class Mesh {
+public:
+    Mesh() = default;
+    Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, int materialIndex = 0);
+    Mesh(const Mesh&) = delete;
+    Mesh& operator=(const Mesh&) = delete;
+    Mesh(Mesh&&) noexcept;            
+    Mesh& operator=(Mesh&&) noexcept;
+    ~Mesh();
+
+    void draw() const;               
+
+    int materialIndex = 0;
+
+private:
+    GLuint VAO = 0, VBO = 0, EBO = 0;
+    GLsizei indexCount = 0;
+};
+
 class Renderable {
 protected:
-    GLuint VAO, VBO, EBO;
-    glm::mat4 model;
-    GLsizei indexCount;
-    Material mat;
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-
-    void setupMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
-    void bindMaterial(const Camera& cam);
+    std::vector<Mesh> meshes;
+    std::vector<Material> materials;
+    glm::mat4 model = glm::mat4(1.0f);
+    void bindMaterial(const Camera& cam, const Material& m); 
 
 public:
-    glm::dvec3 realPos;
-    glm::vec3 renderPos;
-    glm::mat4 rotation;
+    glm::dvec3 realPos = glm::dvec3(0.0);
+    glm::vec3 renderPos = glm::vec3(0.0f);
+    glm::mat4 rotation = glm::mat4(1.0f);
     float renderScale;
 
-    Renderable(Material mat, float renderScale);
+    Renderable(Material mat, float renderScale); // Single-material shapes              
+    Renderable(std::vector<Material> mats, float renderScale); // Models
     Renderable(const Renderable&) = delete;
     Renderable& operator=(const Renderable&) = delete;
-    Renderable(Renderable&&) noexcept;
-    Renderable& operator=(Renderable&&) noexcept;
+    Renderable(Renderable&&) noexcept = default;
+    Renderable& operator=(Renderable&&) noexcept = default;
+    virtual ~Renderable() = default;
 
-    virtual ~Renderable();
-    virtual void draw(const Camera& cam) = 0;
-
-    void setModel(const glm::mat4& model);
+    virtual void draw(const Camera& cam); 
+    void setModel(const glm::mat4& m);
     glm::mat4& getModel();
-    const Material& getMaterial() const { return mat; }
-    void setSunRenderPos(const glm::vec3& sunPos);
+    const Material& getMaterial(size_t i = 0) const { return materials.at(i); }
+    void setSunRenderPos(const glm::vec3& sunPos); // now sets it on every material
+};
+
+class Model : public Renderable {
+public:
+    Model(const std::string& path, Material materialTemplate, float renderScale);
+private:
+    void loadModel(const std::string& path);
+    void processNode(aiNode* node, const aiScene* scene, const glm::mat4& parentTransform);
+    void processMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& transform);
+    int processMaterial(aiMaterial* aiMat, const aiScene* scene);
+
+    std::string directory;
+    Material materialTemplate; // supplies shader + default uniforms (ambient, atmosphere off, etc.)
 };
 
 class SkyBox : public Renderable {
@@ -92,13 +120,11 @@ public:
 class Cube : public Renderable {
 public:
     Cube(Material mat, float sideLength);
-    void draw(const Camera& cam) override;
 };
 
 class Sphere : public Renderable {
 public:
     Sphere(Material mat, float radius); 
-    void draw(const Camera& cam) override;
 };
 
 #endif // RENDERABLE_H

@@ -7,6 +7,7 @@
 #include "graphics/stb_image.h"
 #include "utils.h"
 #include <GLFW/glfw3.h>
+#include <filesystem>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -61,19 +62,19 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
 #endif
    
     // Load shaders
-    shaders["entity"] = Shader("entity.vert", "entity.frag");
-    shaders["skybox"] = Shader("skybox.vert", "skybox.frag");
-    shaders["atmosphere"] = Shader("fullscreen.vert", "atmosphere.frag");
-    shaders["bloom"] = Shader("fullscreen.vert", "bloom.frag");
-    shaders["tonemap"] = Shader("fullscreen.vert", "tonemap.frag");
+    shaders.emplace("entity", Shader("entity.vert", "entity.frag"));
+    shaders.emplace("skybox", Shader("skybox.vert", "skybox.frag"));
+    shaders.emplace("atmosphere", Shader("fullscreen.vert", "atmosphere.frag"));
+    shaders.emplace("bloom", Shader("fullscreen.vert", "bloom.frag"));
+    shaders.emplace("tonemap", Shader("fullscreen.vert", "tonemap.frag"));
 
     // Load textures
     // stbi_set_flip_vertically_on_load(true);
-    loadTexture("uvmap/earth_day");
-    loadTexture("uvmap/earth_night");
-    loadTexture("uvmap/sun");
-    loadTexture("uvmap/moon");
-    loadTexture("cubemap/spacebox");
+    textures.emplace("uvmap/earth_day", loadTextureFromFile("resources/assets/uvmaps/earth_day.png"));
+    textures.emplace("uvmap/earth_night", loadTextureFromFile("resources/assets/uvmaps/earth_night.png"));
+    textures.emplace("uvmap/sun", loadTextureFromFile("resources/assets/uvmaps/sun.png"));
+    textures.emplace("uvmap/moon", loadTextureFromFile("resources/assets/uvmaps/moon.png"));
+    textures.emplace("cubemap/spacebox", loadTextureCubemap("resources/assets/cubemaps/spacebox"));
 
     glfwGetFramebufferSize(window, &width, &height);
     glViewport(0, 0, width, height);
@@ -345,76 +346,87 @@ void GraphicsEngine::setupScreenQuad() {
     glBindVertexArray(0);
 }
 
-void GraphicsEngine::loadTexture(const std::string& key) {
+static GLuint uploadRGBAOrRGB(uint8_t* data, int width, int height, int nrChannels) {
     GLuint texture;
     glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    size_t delim = key.find("/");
-    std::string tex_type = key.substr(0, delim);
-    std::string tex_name = key.substr(delim+1);
-    printf("Loading texture '%s/%s'\n", tex_type.c_str(), tex_name.c_str());
+    GLenum internalFormat = (nrChannels == 4) ? GL_SRGB8_ALPHA8 : GL_SRGB8;
+    GLenum format = (nrChannels == 4) ? GL_RGBA : (nrChannels == 1 ? GL_RED : GL_RGB);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    return texture;
+}
 
-    if (tex_type == "uvmap") {
-        glBindTexture(GL_TEXTURE_2D, texture);
-        
-        // set the texture wrapping/filtering options (on the currently bound texture object)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        // load and generate the texture
-        int width, height, nrChannels;
-        std::string fp = std::format("resources/assets/{}/{}.png", tex_type, tex_name);
-        uint8_t* data = stbi_load(fp.c_str(), &width, &height, &nrChannels, 0);
+GLuint GraphicsEngine::loadTextureCubemap(const std::string& path) {
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
+
+    static const std::vector<std::string> faces{
+        "right", "left", "top", "bottom", "front", "back"
+    };
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // avoid row padding assumptions
+
+    int width, height, nrChannels;
+    for (size_t i = 0; i < faces.size(); i++) {
+        std::string file = std::format("{}.png", faces[i]);
+        std::filesystem::path fp = path;
+        fp /= file;
+        uint8_t* data = stbi_load(fp.string().c_str(), &width, &height, &nrChannels, 0);
         if (data) {
             GLenum internalFormat = (nrChannels == 4) ? GL_SRGB8_ALPHA8 : GL_SRGB8;
             GLenum format = (nrChannels == 4) ? GL_RGBA : (nrChannels == 1 ? GL_RED : GL_RGB);
-            glTexImage2D(
-                GL_TEXTURE_2D, 0, internalFormat, width, height, 0, 
-                format, GL_UNSIGNED_BYTE, data
-            );
-            glGenerateMipmap(GL_TEXTURE_2D);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         } else {
-            printf("Failed to load uvmap: '%s'\n", fp.c_str());
+            printf("Failed to load cubemap face: '%s'\n", fp.string().c_str());
         }
         stbi_image_free(data);
-        textures.emplace(key, texture);
-        printf("uvmap loaded: '%s' id=%d\n", key.c_str(), texture);
-
-    } else if (tex_type == "cubemap") {
-        glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
-        std::vector<std::string> faces{
-            "right", "left", "top", "bottom", "front", "back"
-        };
-
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // avoid row padding assumptions
-
-        int width, height, nrChannels;
-        for (size_t i = 0; i < faces.size(); i++) {
-            std::string fp = std::format("resources/assets/{}/{}/{}.png", tex_type, tex_name, faces[i]);
-            uint8_t* data = stbi_load(fp.c_str(), &width, &height, &nrChannels, 0);
-            if (data) {
-                GLenum internalFormat = (nrChannels == 4) ? GL_SRGB8_ALPHA8 : GL_SRGB8;
-                GLenum format = (nrChannels == 4) ? GL_RGBA : (nrChannels == 1 ? GL_RED : GL_RGB);
-                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
-                    0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data
-                );
-            } else {
-                printf("Failed to load cubemap: '%s'\n", fp.c_str());
-            }
-            stbi_image_free(data);
-        }
-
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // restore default for subsequent loads
-
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-        textures.emplace(key, texture);
-        printf("cubemap loaded: '%s' id=%d\n", key.c_str(), texture);
     }
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4); // restore default
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return texture;
+}
+
+GLuint GraphicsEngine::loadTextureFromFile(const std::string& path) {
+    int width, height, nrChannels;
+    uint8_t* data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
+    if (!data) {
+        printf("Failed to load texture: '%s'\n", path.c_str());
+        return 0;
+    }
+    GLuint texture = uploadRGBAOrRGB(data, width, height, nrChannels);
+    stbi_image_free(data);
+    return texture;
+}
+
+GLuint GraphicsEngine::loadTextureFromMemory(const uint8_t* bytes, size_t size) {
+    int width, height, nrChannels;
+    uint8_t* data = stbi_load_from_memory(bytes, static_cast<int>(size), &width, &height, &nrChannels, 0);
+    if (!data) {
+        printf("Failed to decode embedded texture (%zu bytes)\n", size);
+        return 0;
+    }
+    GLuint texture = uploadRGBAOrRGB(data, width, height, nrChannels);
+    stbi_image_free(data);
+    return texture;
+}
+
+GLuint GraphicsEngine::loadTextureFromRawRGBA(const uint8_t* data, int width, int height) {
+    return uploadRGBAOrRGB(const_cast<uint8_t*>(data), width, height, 4);
 }
 
 GLuint& GraphicsEngine::getTextureID(const std::string& key) {

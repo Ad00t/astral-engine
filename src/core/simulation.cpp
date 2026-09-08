@@ -109,10 +109,11 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     ));
 
     // Test ISS
-    renderables.emplace("iss", std::make_unique<Cube>(
+    renderables.emplace("iss", std::make_unique<Model>(
+        "resources/assets/models/iss.glb",
         Material{
             .shader = gEng.getShader("entity"),
-            .uBaseColor = glm::vec4(1, 0, 1, 1),
+            .uAmbientLighting = glm::vec3(0.02f),
         },
         toRenderUnits(S_ISS)
     ));

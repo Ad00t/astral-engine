@@ -46,12 +46,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glad)
 glad_add_library(glad_gl_core_45 STATIC LOADER API gl:core=4.5)
-# add_library(glad STATIC 
-#     ${VENDOR_DIR}/glad/src/gl.c
-# )
-# target_include_directories(glad PUBLIC 
-#     ${VENDOR_DIR}/glad/include
-# )
 
 # GLM
 FetchContent_Declare(
