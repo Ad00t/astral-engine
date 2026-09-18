@@ -1,5 +1,5 @@
 #include "core/simulation.h"
-#include "core/entity_controller.h"
+#include "core/controller.h"
 #include "glm/trigonometric.hpp"
 #include "graphics/camera.h"
 #include "graphics/graphics_engine.h"
@@ -21,11 +21,22 @@ constexpr double M_EARTH = 5.972e24;
 constexpr double R_MOON = 1.7375e6;
 constexpr double M_MOON = 7.35e22;
 
+Entity::Entity(const std::string& id) : id(id) {}
+
+void Entity::addRenderable(std::unique_ptr<Renderable> rend) {
+    renderables.emplace(rend->id, std::move(rend));
+}
+
+void Entity::addCollider(std::unique_ptr<Collider> coll) {
+    colliders.emplace(coll->id, std::move(coll));
+}
+
 Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     runPhysics.store(true);
 
     // Spacebox
-    renderables.emplace("spacebox", std::make_unique<SkyBox>("spacebox",
+    std::unique_ptr<Entity> spacebox = std::make_unique<Entity>("spacebox");
+    spacebox->addRenderable(std::make_unique<SkyBox>("spacebox",
         Material{
             .shader = gEng.getShader("skybox"), 
             .textureID = gEng.getTextureID("cubemap/spacebox"),
@@ -34,20 +45,21 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     ));
 
     // Sun
-    rigidbodies.emplace("sun", RigidBody(
+    std::unique_ptr<Entity> sun = std::make_unique<Entity>("sun");
+    sun->rigidbody = std::make_unique<RigidBody>(
         glm::dvec3(0, 0, 0), 
         glm::dvec3(0, 0, 0), 
         glm::quat(0.568933, 0.059228, 0.305817, 0.761107),
         glm::dvec3(3.505831e-7, -8.893373e-8, 2.842410e-6),
         M_SUN 
-    ));
-    colliders.emplace("sun", Collider::create<SphereCollider>(
-        rigidbodies["sun"],
+    );
+    sun->addCollider(Collider::create<SphereCollider>(
+        "sun", sun->rigidbody.get(),
         0.0, 1.0,
         R_SUN 
     ));
-    renderables.emplace("sun", std::make_unique<CelestialBody>("sun",
-        Material{
+    sun->addRenderable(std::make_unique<CelestialBody>(
+        "sun", Material{
             .shader = gEng.getShader("entity"), 
             .textureID = gEng.getTextureID("uvmap/sun"),
             .uBaseColor = glm::vec4(1, 1, 0, 1),
@@ -58,20 +70,21 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     ));
 
     // Earth
-    rigidbodies.emplace("earth", RigidBody(
+    std::unique_ptr<Entity> earth = std::make_unique<Entity>("earth");
+    earth->rigidbody = std::make_unique<RigidBody>(
         glm::dvec3(1.496e11, 0, 0),
         glm::dvec3(0, 3.0e4, 0), 
         glm::quat(0.750882, -0.155769, 0.130365, 0.628425),
         glm::dvec3(4.47e-21, 2.900637e-5, 6.690385e-5),
         M_EARTH
-    ));
-    colliders.emplace("earth", Collider::create<SphereCollider>(
-        rigidbodies.at("earth"),
+    );
+    earth->addCollider(Collider::create<SphereCollider>(
+        "earth", earth->rigidbody.get(),
         0.0, 0.75,
         R_EARTH
     ));
-    renderables.emplace("earth", std::make_unique<CelestialBody>("earth",
-        Material{
+    earth->addRenderable(std::make_unique<CelestialBody>(
+        "earth", Material{
             .shader = gEng.getShader("entity"), 
             .textureID = gEng.getTextureID("uvmap/earth_day"),
             .textureID2 = gEng.getTextureID("uvmap/earth_night"),
@@ -84,20 +97,21 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     ));
    
     // Moon
-    rigidbodies.emplace("moon", RigidBody(
+    std::unique_ptr<Entity> moon = std::make_unique<Entity>("moon");
+    moon->rigidbody = std::make_unique<RigidBody>(
         glm::dvec3(1.496e11 + 3.84e8, 0, 0),
         glm::dvec3(0, 3.0e4 + 1.022e3, 0), 
         glm::quat(0.328257, 0.000045, 0.375904, 0.866570),
         glm::dvec3(-9.432401e-11, -9.992006e-10, 2.661699e-6),
         M_MOON 
-    ));
-    colliders.emplace("moon", Collider::create<SphereCollider>(
-        rigidbodies.at("moon"),
+    );
+    moon->addCollider(Collider::create<SphereCollider>(
+        "moon", moon->rigidbody.get(),
         0.0, 1.0,
         R_MOON 
     ));
-    renderables.emplace("moon", std::make_unique<CelestialBody>("moon",
-        Material{
+    moon->addRenderable(std::make_unique<CelestialBody>(
+        "moon", Material{
             .shader = gEng.getShader("entity"),
             .textureID = gEng.getTextureID("uvmap/moon"),
             .uBaseColor = glm::vec4(1, 1, 1, 1),
@@ -107,8 +121,9 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     ));
 
     // ISS
-    rigidbodies.emplace("iss", RigidBody(
-        rigidbodies.at("earth"),
+    std::unique_ptr<Entity> iss = std::make_unique<Entity>("iss");
+    iss->rigidbody = std::make_unique<RigidBody>(
+        earth->rigidbody.get(),
         OrbitElements{
             .a = 6.7975e6,
             .e = 0.0004984,
@@ -120,14 +135,14 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         glm::quat(1, 0, 0, 0),
         glm::dvec3(0, 0, 0),
         450000
-    ));
-    colliders.emplace("iss", Collider::create<OBBCollider>(
-        rigidbodies.at("iss"),
+    );
+    iss->addCollider(Collider::create<OBBCollider>(
+        "iss:hull", iss->rigidbody.get(),
         0.0, 1.0,
         glm::dvec3(109, 73, 45)
     ));
-    renderables.emplace("iss", std::make_unique<Model>("iss",
-        "resources/assets/models/iss.glb",
+    iss->addRenderable(std::make_unique<Model>(
+        "iss:hull", "resources/assets/models/iss.glb",
         Material{
             .shader = gEng.getShader("entity"),
         },
@@ -135,52 +150,58 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     ));
 
     // Starship 
-    rigidbodies.emplace("starship", RigidBody(
+    std::unique_ptr<Entity> starship = std::make_unique<Entity>("starship");
+    starship->rigidbody = std::make_unique<RigidBody>(
         glm::dvec3(1.496e11 - (R_EARTH + 30), 0, 0),
         glm::dvec3(0, 3.0e4 - 436, 0), 
         glm::angleAxis(glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
         glm::dvec3(0, 0, 0),
         5300000 
-    ));
-    colliders.emplace("starship", Collider::create<OBBCollider>(
-        rigidbodies.at("starship"),
+    );
+    starship->controller = std::make_unique<StarshipController>(
+        1e-3
+    );
+    starship->addCollider(Collider::create<OBBCollider>(
+        "starship:hull", starship->rigidbody.get(),
         0.0, 0.75,
         glm::dvec3(9, 51, 9)
     ));
-    renderables.emplace("starship", std::make_unique<Model>("starship:hull",
-        "resources/assets/models/starship.glb",
+    starship->addRenderable(std::make_unique<Model>(
+        "starship:hull", "resources/assets/models/starship.glb",
         Material{
             .shader = gEng.getShader("entity")
         },
         glm::vec3(1.0f, 2.0f, 1.0f)
     ));
-    controllers.emplace("starship", std::make_unique<StarshipController>(
-        1e-3
-    ));
-    renderables.emplace("starship:main_engine", std::make_unique<ExhaustPlume>("starship:main_engine",
-        Material{
+    starship->addRenderable(std::make_unique<ExhaustPlume>(
+        "starship:main_engine", Material{
             .shader = gEng.getShader("exhaust"),
             .uBaseColor = glm::vec4(1, 1, 1, 1)
         },
         glm::vec3(1.0f), 
-        controllers.at("starship")->thrusters.at("main_engine").offset
+        starship->controller->thrusters.at("starship:main_engine").get()
     ));
+
+    addEntity(std::move(spacebox));
+    addEntity(std::move(sun));
+    addEntity(std::move(earth));
+    addEntity(std::move(moon));
+    addEntity(std::move(iss));
+    addEntity(std::move(starship));
 }
 
-Simulation::~Simulation() {}
+void Simulation::addEntity(std::unique_ptr<Entity> entity) {
+    entities.emplace(entity->id, std::move(entity));
+}
 
-void Simulation::syncPhysicsUpdate() {
-    for (auto& [id, rend] : renderables) {
-        std::string rbid = id.find(":") != std::string::npos ? id.substr(0, id.find(":")) : id;
-        if (!rigidbodies.contains(rbid)) continue; 
-        RigidBody& rb = rigidbodies.at(rbid);
-        rend->updateFromRigidBody(rb);
+void Simulation::updateFromPhysics() {
+    for (auto& [entity_id, entity] : entities) {
+        if (entity->rigidbody == nullptr) continue;
+        for (auto& [component_id, coll] : entity->colliders) {
+            coll->updateFromRigidBody(entity->rigidbody.get());
+        }
+        for (auto& [component_id, rend] : entity->renderables) {
+            rend->updateFromRigidBody(entity->rigidbody.get());
+        }
     }
-}
-
-void Simulation::clear() {
-    renderables.clear();
-    rigidbodies.clear();
-    colliders.clear();
-    controllers.clear();
 }

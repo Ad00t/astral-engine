@@ -114,33 +114,42 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    for (auto& [id, rend] : sim.renderables) {
-        glm::vec3 relPos = toRenderUnits(rend->realPos - cam->realPos);
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), relPos) * rend->rotation;
-        float collMaxRadius = toRenderUnits(sim.colliders.contains(id) ? sim.colliders.at(id)->getMaxRadius() : 1.0);
-        model = glm::scale(model, glm::vec3(collMaxRadius) * rend->renderScale);
-        rend->setModel(model);
-        rend->renderPos = relPos;
-    }
-
-    sim.renderables["spacebox"]->draw(sim, *cam);
-
-    for (auto& [id, rend] : sim.renderables) {
-        if (id == "spacebox") continue;
-        if (dynamic_cast<ExhaustPlume*>(rend.get())) continue;
-
-        rend->setSunRenderPos(sim.renderables["sun"]->renderPos);
-        rend->draw(sim, *cam);
-
-        if (config.debug_mode && sim.colliders.contains(id)) {
-            rend->drawDebug(sim, *cam);
+    for (auto& [entity_id, entity] : sim.entities) {
+        for (auto& [component_id, rend] : entity->renderables) {
+            glm::vec3 relPos = toRenderUnits(rend->realPos - cam->realPos);
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), relPos) * rend->rotation;
+            float geometryScale = toRenderUnits(
+                entity->colliders.contains(component_id) ? entity->colliders.at(component_id)->getMaxRadius() : 1.0f
+            );
+            model = glm::scale(model, glm::vec3(geometryScale) * rend->renderScale);
+            rend->setModel(model);
+            rend->renderPos = relPos;
         }
     }
 
-    for (auto& [id, rend] : sim.renderables) {
-        auto* exhaust = dynamic_cast<ExhaustPlume*>(rend.get());
-        if (!exhaust) continue;
-        exhaust->draw(sim, *cam);
+    sim.entities.at("spacebox")->renderables.at("spacebox")->draw(*cam);
+    Renderable* sunRend = sim.entities.at("sun")->renderables.at("sun").get();
+
+    for (auto& [entity_id, entity] : sim.entities) {
+        if (entity_id == "spacebox") continue;
+        for (auto& [component_id, rend] : entity->renderables) {
+            if (dynamic_cast<ExhaustPlume*>(rend.get())) continue;
+
+            rend->setSunRenderPos(sunRend->renderPos);
+            rend->draw(*cam);
+
+            if (config.debug_mode && entity->colliders.contains(component_id)) {
+                rend->drawDebug(*cam, entity->colliders.at(component_id).get());
+            }
+        }
+    }
+
+    for (auto& [entity_id, entity] : sim.entities) {
+        for (auto& [component_id, rend] : entity->renderables) {
+            auto* exhaust = dynamic_cast<ExhaustPlume*>(rend.get());
+            if (!exhaust) continue;
+            exhaust->draw(*cam);
+        }
     }
 
     if (config.msaa_enabled) {
@@ -175,25 +184,29 @@ void GraphicsEngine::renderScene(Simulation& sim) {
 
     glBindVertexArray(quadVAO);
 
-    for (auto& [id, rend] : sim.renderables) {
-        const AtmosphereParams& atmos = rend->getMaterial().atmosphere;
-        if (!atmos.enabled) continue;
+    for (auto& [entity_id, entity] : sim.entities) {
+        for (auto& [component_id, rend] : entity->renderables) {
+            const AtmosphereParams& atmos = rend->getMaterial().atmosphere;
+            if (!atmos.enabled) continue;
 
-        float collMaxRadius = toRenderUnits(sim.colliders.contains(id) ? sim.colliders.at(id)->getMaxRadius() : 1.0);
+            float geometryScale = toRenderUnits(
+                entity->colliders.contains(component_id) ? entity->colliders.at(component_id)->getMaxRadius() : 1.0f
+            );
 
-        atmo.setVec3("uPlanetPosRel", toRenderUnits(rend->realPos - cam->realPos));
-        atmo.setFloat("uPlanetRadius", collMaxRadius);
-        atmo.setFloat("uAtmosRadius", collMaxRadius * atmos.radiusMultiplier);
-        atmo.setVec3("uSunDir", glm::normalize(glm::vec3(sim.renderables["sun"]->realPos - rend->realPos)));
-        atmo.setFloat("uRayleighScaleHeight", atmos.rayleighScaleHeight);
-        atmo.setFloat("uMieScaleHeight", atmos.mieScaleHeight);
-        atmo.setVec3("uRayleighCoeff", atmos.rayleighCoeff);
-        atmo.setFloat("uMieCoeff", atmos.mieCoeff);
-        atmo.setInt("uNumSamples", atmos.numSamples);
-        atmo.setInt("uNumLightSamples", atmos.numLightSamples);
-        atmo.setFloat("uMieG", atmos.mieG);
+            atmo.setVec3("uPlanetPosRel", toRenderUnits(rend->realPos - cam->realPos));
+            atmo.setFloat("uPlanetRadius", geometryScale);
+            atmo.setFloat("uAtmosRadius", geometryScale * atmos.radiusMultiplier);
+            atmo.setVec3("uSunDir", glm::normalize(glm::vec3(sunRend->realPos - rend->realPos)));
+            atmo.setFloat("uRayleighScaleHeight", atmos.rayleighScaleHeight);
+            atmo.setFloat("uMieScaleHeight", atmos.mieScaleHeight);
+            atmo.setVec3("uRayleighCoeff", atmos.rayleighCoeff);
+            atmo.setFloat("uMieCoeff", atmos.mieCoeff);
+            atmo.setInt("uNumSamples", atmos.numSamples);
+            atmo.setInt("uNumLightSamples", atmos.numLightSamples);
+            atmo.setFloat("uMieG", atmos.mieG);
 
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
     }
 
     glBindVertexArray(0);

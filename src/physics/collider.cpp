@@ -63,18 +63,18 @@ CollisionInfo detectCollisionSphereOBB(SphereCollider* sphere, OBBCollider* obb)
     };
 }
 
-Collider::Collider(RigidBody& rb, double restitution, double frictionCoeff)
-    : centerPos(rb.pos), restitution(restitution), frictionCoeff(frictionCoeff) {
+Collider::Collider(const std::string& id, RigidBody* rb, double restitution, double frictionCoeff, glm::dvec3 rbOffset)
+    : id(id), centerPos(rb->pos), restitution(restitution), frictionCoeff(frictionCoeff), rbOffset(rbOffset) {
     updateFromRigidBody(rb);
 }
 
-void Collider::updateFromRigidBody(const RigidBody& rb) {
-    centerPos = rb.pos;
-    rot = glm::dquat(rb.rot);
+void Collider::updateFromRigidBody(RigidBody* rb) {
+    centerPos = rb->pos + rbOffset;
+    rot = glm::dquat(rb->rot);
 }
 
-OBBCollider::OBBCollider(RigidBody& rb, double restitution, double frictionCoeff, glm::dvec3 fullExtent)
-    : Collider(rb, restitution, frictionCoeff), halfExtent(fullExtent / 2.0) {}
+OBBCollider::OBBCollider(const std::string& id, RigidBody* rb, double restitution, double frictionCoeff, glm::dvec3 fullExtent, glm::dvec3 rbOffset)
+    : Collider(id, rb, restitution, frictionCoeff, rbOffset), halfExtent(fullExtent / 2.0) {}
 
 CollisionInfo OBBCollider::detectCollision(Collider* other) {
     if (auto obb = dynamic_cast<OBBCollider*>(other)) {
@@ -102,8 +102,8 @@ glm::dmat3 OBBCollider::computeInertiaTensorBody(double mass) {
     );
 }
 
-SphereCollider::SphereCollider(RigidBody& rb, double restitution, double frictionCoeff, double radius)
-    : Collider(rb, restitution, frictionCoeff), radius(radius) {}
+SphereCollider::SphereCollider(const std::string& id, RigidBody* rb, double restitution, double frictionCoeff, double radius, glm::dvec3 rbOffset)
+    : Collider(id, rb, restitution, frictionCoeff, rbOffset), radius(radius) {}
 
 CollisionInfo SphereCollider::detectCollision(Collider* other) {
     if (auto obb = dynamic_cast<OBBCollider*>(other)) {

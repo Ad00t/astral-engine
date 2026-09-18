@@ -1,5 +1,5 @@
-#ifndef ENTITY_CONTROLLER_H
-#define ENTITY_CONTROLLER_H
+#ifndef CONTROLLER_H
+#define CONTROLLER_H
 
 #include <physics/rigidbody.h>
 #include <unordered_map>
@@ -22,10 +22,10 @@ public:
     Thruster(Type type, glm::dvec3 offset, glm::dvec3 dir);
     ~Thruster() = default;
 
-    void applyThrust(RigidBody& rb);
+    void applyThrust(RigidBody* rb);
 };
 
-class EntityController {
+class Controller {
 protected:
     double sensorNoise = 0;
     double elapsedTime = 0;
@@ -41,21 +41,21 @@ protected:
     SensorData sensorData;
 
 public:
-    std::unordered_map<std::string, Thruster> thrusters;
+    std::unordered_map<std::string, std::unique_ptr<Thruster>> thrusters;
 
-    EntityController(double sensorNoise);
-    virtual ~EntityController() = default;
+    Controller(double sensorNoise);
+    virtual ~Controller() = default;
 
-    virtual void updateSensors(const RigidBody& rb) = 0;
-    virtual void runControlLoop(RigidBody& rb, double dT) = 0;
+    virtual void updateSensors(RigidBody* rb) = 0;
+    virtual void runControlLoop(RigidBody* rb, double dT) = 0;
 };
 
-class StarshipController : public EntityController {
+class StarshipController : public Controller {
 public:
     StarshipController(double sensorNoise);
     
-    void updateSensors(const RigidBody& rb) override;
-    void runControlLoop(RigidBody& rb, double dT) override;
+    void updateSensors(RigidBody* rb) override;
+    void runControlLoop(RigidBody* rb, double dT) override;
 };
 
 #endif

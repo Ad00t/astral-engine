@@ -6,7 +6,7 @@
 #include "opengl_includes.h"
 #include "graphics/shader.h"
 #include "physics/collider.h"
-#include "core/entity_controller.h"
+#include "core/controller.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
@@ -105,9 +105,9 @@ public:
     Renderable& operator=(Renderable&&) noexcept = default;
     virtual ~Renderable() = default;
 
-    virtual void draw(const Simulation& sim, const Camera& cam) = 0; 
-    void drawDebug(const Simulation& sim, const Camera& cam); 
-    void updateFromRigidBody(const RigidBody& rb);
+    virtual void draw(const Camera& cam) = 0; 
+    void drawDebug(const Camera& cam, const Collider* coll); 
+    void updateFromRigidBody(RigidBody* rb);
     void setModel(const glm::mat4& m);
     glm::mat4& getModel();
     const Material& getMaterial(size_t i = 0) const { return materials.at(i); }
@@ -133,25 +133,25 @@ private:
 
 public:
     Model(const std::string& id, const std::string& path, Material materialTemplate, glm::vec3 renderScale = glm::vec3(1.0f), glm::dvec3 realOffset = glm::dvec3(0.0));
-    void draw(const Simulation& sim, const Camera& cam) override;
+    void draw(const Camera& cam) override;
 };
 
 class SkyBox : public Renderable {
 public:
     SkyBox(const std::string& id, Material mat);
-    void draw(const Simulation& sim, const Camera& cam) override;
+    void draw(const Camera& cam) override;
 };
 
 class Cube : public Renderable {
 public:
     Cube(const std::string& id, Material mat, glm::vec3 renderScale = glm::vec3(1.0f), glm::dvec3 realOffset = glm::dvec3(0.0));
-    void draw(const Simulation& sim, const Camera& cam) override;
+    void draw(const Camera& cam) override;
 };
 
 class CelestialBody : public Renderable {
 public:
     CelestialBody(const std::string& id, Material mat, glm::vec3 renderScale = glm::vec3(1.0f), glm::dvec3 realOffset = glm::dvec3(0.0)); 
-    void draw(const Simulation& sim, const Camera& cam) override;
+    void draw(const Camera& cam) override;
 };
 
 
@@ -185,10 +185,12 @@ struct ExhaustConfig {
 
 class ExhaustPlume : public Renderable {
 public:
-    ExhaustPlume(const std::string& id, Material mat, glm::vec3 renderScale, glm::dvec3 realOffset, ExhaustConfig cfg = ExhaustConfig{});
+    Thruster* thruster;
+
+    ExhaustPlume(const std::string& id, Material mat, glm::vec3 renderScale, Thruster* thruster, ExhaustConfig cfg = ExhaustConfig{});
     ~ExhaustPlume() override = default;
 
-    void draw(const Simulation& sim, const Camera& cam) override;
+    void draw(const Camera& cam) override;
 
     ExhaustConfig config;
 };

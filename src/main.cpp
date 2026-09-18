@@ -31,7 +31,7 @@ void physicsThreadFunc() {
         
         std::unique_lock<std::mutex> lock(sim->stateMutex);
         pEng->update(*sim, dT);
-        sim->syncPhysicsUpdate();
+        sim->updateFromPhysics();
         lock.unlock();
 
         pEng->updateLimiter.endUpdate();
@@ -44,7 +44,7 @@ int main() {
     sim = std::make_unique<Simulation>(*gEng, *pEng);
     gui = std::make_unique<GUI>(gEng->window);
 
-    gEng->cam->setTarget(sim->colliders.at(gui->getCamTargetID()).get());
+    gEng->cam->setTarget(sim->entities.at(gui->getCamTargetID())->colliders.begin()->second.get());
     physicsThread = std::thread(physicsThreadFunc);
 
     while (!glfwWindowShouldClose(gEng->window)) {
@@ -68,7 +68,6 @@ int main() {
     if (physicsThread.joinable()) {
         physicsThread.join();
     }
-    sim->clear();
     gui->cleanup();
     return 0;
 }

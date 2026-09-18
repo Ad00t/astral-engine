@@ -32,15 +32,15 @@ public:
     glm::dmat3 inertiaTensorBody = glm::dmat3(0.0);     // kgm^2, body frame
 
     RigidBody(glm::dvec3 pos, glm::dvec3 vel, glm::quat rot, glm::dvec3 ang_vel, double mass);
-    RigidBody(const RigidBody& central, OrbitElements oe, glm::quat rot, glm::dvec3 ang_vel, double mass);
+    RigidBody(RigidBody* central, OrbitElements oe, glm::quat rot, glm::dvec3 ang_vel, double mass);
     RigidBody() = default;
     ~RigidBody() = default;
 
     void applyForceAtPoint(const glm::dvec3& force, const glm::dvec3& point, bool isGravity = false);
     glm::dmat3 getInvInertiaWorld() const;
 
-    void fromOrbitElements(const RigidBody& central, OrbitElements& oe);
-    void toOrbitElements(const RigidBody& central, OrbitElements& oe);
+    void fromOrbitElements(RigidBody* central, OrbitElements& oe);
+    void toOrbitElements(RigidBody* central, OrbitElements& oe);
 };
 
 #endif

@@ -372,9 +372,7 @@ void Renderable::initDebugGeometry(const Collider* coll) {
     debugInitialized = true;
 }
 
-void Renderable::drawDebug(const Simulation& sim, const Camera& cam) {
-    if (!sim.colliders.contains(id)) return;
-    Collider* coll = sim.colliders.at(id).get();
+void Renderable::drawDebug(const Camera& cam, const Collider* coll) {
     if (!debugInitialized) initDebugGeometry(coll);
 
     Shader entityShader = materials[0].shader; // Should be entity?
@@ -407,9 +405,9 @@ void Renderable::drawDebug(const Simulation& sim, const Camera& cam) {
     glBindVertexArray(0);
 }
 
-void Renderable::updateFromRigidBody(const RigidBody& rb) {
-    realPos = rb.pos + glm::dquat(rb.rot) * realOffset;
-    rotation = glm::mat4_cast(rb.rot);
+void Renderable::updateFromRigidBody(RigidBody* rb) {
+    realPos = rb->pos + glm::dquat(rb->rot) * realOffset;
+    rotation = glm::mat4_cast(rb->rot);
 }
 
 void Renderable::setModel(const glm::mat4& m) {
@@ -435,7 +433,7 @@ Model::Model(const std::string& id, const std::string& path, Material materialTe
     loadModel(path);
 }
 
-void Model::draw(const Simulation& sim, const Camera& cam) {
+void Model::draw(const Camera& cam) {
     for (const Mesh& mesh : meshes) {
         const Material& mat = materials.at(mesh.materialIndex);
 
@@ -599,7 +597,7 @@ SkyBox::SkyBox(const std::string& id, Material mat) : Renderable(id, std::move(m
     meshes.emplace_back(skyboxVertices, makeIdentityIndices(skyboxVertices.size()), 0);
 }
 
-void SkyBox::draw(const Simulation& sim, const Camera& cam) {
+void SkyBox::draw(const Camera& cam) {
     const Mesh& mesh = meshes[0];
     const Material& mat = materials[mesh.materialIndex];
 
@@ -626,7 +624,7 @@ Cube::Cube(const std::string& id, Material mat, glm::vec3 renderScale, glm::dvec
     meshes.emplace_back(cubeVertices, cubeIndices, 0);
 }
 
-void Cube::draw(const Simulation& sim, const Camera& cam) {
+void Cube::draw(const Camera& cam) {
     const Mesh& mesh = meshes[0];
     const Material& mat = materials[mesh.materialIndex];
 
@@ -663,7 +661,7 @@ CelestialBody::CelestialBody(const std::string& id, Material mat, glm::vec3 rend
     meshes.emplace_back(std::move(vertices), std::move(indices), 0);
 }
 
-void CelestialBody::draw(const Simulation& sim, const Camera& cam) {
+void CelestialBody::draw(const Camera& cam) {
     const Mesh& mesh = meshes[0];
     const Material& mat = materials[mesh.materialIndex];
 
@@ -698,8 +696,8 @@ void CelestialBody::draw(const Simulation& sim, const Camera& cam) {
 
 // EXHAUST PLUME
 
-ExhaustPlume::ExhaustPlume(const std::string& id, Material mat, glm::vec3 renderScale, glm::dvec3 realOffset, ExhaustConfig cfg)
-    : Renderable(id, std::move(mat), renderScale, realOffset), config(cfg) {
+ExhaustPlume::ExhaustPlume(const std::string& id, Material mat, glm::vec3 renderScale, Thruster* thruster, ExhaustConfig cfg)
+    : Renderable(id, std::move(mat), renderScale, thruster->offset), thruster(thruster), config(cfg) {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 
@@ -707,31 +705,19 @@ ExhaustPlume::ExhaustPlume(const std::string& id, Material mat, glm::vec3 render
     meshes.emplace_back(std::move(vertices), std::move(indices), 0);
 }
 
-void ExhaustPlume::draw(const Simulation& sim, const Camera& cam) {
-    size_t delimPos = id.find(':');
-    if (delimPos == std::string::npos) return;
-
-    const std::string mainID = id.substr(0, delimPos);
-    const std::string thrusterID = id.substr(delimPos + 1);
-
-    if (!sim.controllers.contains(mainID)) return;
-
-    auto& controller = sim.controllers.at(mainID);
-    if (!controller->thrusters.contains(thrusterID)) return;
-
-    Thruster& thruster = controller->thrusters.at(thrusterID);
-    if (thruster.thrust <= 0.0f) return;
+void ExhaustPlume::draw(const Camera& cam) {
+    if (thruster->thrust <= 0.0f) return;
 
     const Mesh& mesh = meshes[0];
     const Material& mat = materials[mesh.materialIndex];
 
     constexpr float maxThrust = 7.44e7f;
-    float thrustFactor = glm::clamp(static_cast<float>(thruster.thrust) / maxThrust, 0.0f, 1.0f);
+    float thrustFactor = glm::clamp(static_cast<float>(thruster->thrust) / maxThrust, 0.0f, 1.0f);
 
     float plumeLength = glm::mix(config.lengthIdle, config.lengthFull, thrustFactor);
     float plumeRadius = glm::mix(config.radiusIdle, config.radiusFull, thrustFactor);
 
-    glm::vec3 localExhaustDir = -glm::vec3(thruster.dir);
+    glm::vec3 localExhaustDir = -glm::vec3(thruster->dir);
     if (glm::dot(localExhaustDir, localExhaustDir) < 1e-8f) {
         localExhaustDir = glm::vec3(0.0f, -1.0f, 0.0f);
     } else {
@@ -750,7 +736,7 @@ void ExhaustPlume::draw(const Simulation& sim, const Camera& cam) {
     mat.shader.setMat4("model", plumeModel);
     mat.shader.setMat4("view", cam.view);
     mat.shader.setMat4("projection", cam.projection);
-    mat.shader.setFloat("uThrust", static_cast<float>(thruster.thrust));
+    mat.shader.setFloat("uThrust", static_cast<float>(thruster->thrust));
     mat.shader.setVec3("uThrustDir", exhaustDir);
     mat.shader.setFloat("uTime", static_cast<float>(glfwGetTime()));
 

@@ -48,11 +48,11 @@ void GUI::drawElements(Simulation& sim, Camera& cam) {
     ImGui::SliderFloat("Sim Speed", &slider_sim_speed, 0, 1e6f, "%.3fx", ImGuiSliderFlags_Logarithmic);
 
     if (ImGui::BeginCombo("Camera Target", camTargetID.c_str())) {
-        for (const auto& [id, coll] : sim.colliders) {
-            bool isSelected = (id == camTargetID);
-            if (ImGui::Selectable(id.c_str(), isSelected)) {
-                camTargetID = id;
-                cam.setTarget(coll.get());
+        for (auto& [entity_id, entity] : sim.entities) {
+            bool isSelected = (entity_id == camTargetID);
+            if (ImGui::Selectable(entity_id.c_str(), isSelected)) {
+                camTargetID = entity_id;
+                cam.setTarget(entity->colliders.begin()->second.get());
             }
             if (isSelected) {
                 ImGui::SetItemDefaultFocus();

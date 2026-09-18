@@ -42,7 +42,7 @@ public:
         int bloom_downsample = 2;
         int num_bloom_passes = 6;
         bool msaa_enabled = true;
-        int msaa_samples = 16;
+        int msaa_samples = 8;
         bool debug_mode = false;
     };
     Config config;
