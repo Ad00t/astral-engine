@@ -5,7 +5,6 @@ in vec2 UV;
 out vec4 FragColor;
 
 uniform vec3 uPlanetPosRel; 
-uniform vec3 uCamPos;
 uniform sampler2D uSceneDepth;
 uniform mat4 uInvProj;
 uniform mat4 uInvView;
@@ -37,7 +36,7 @@ void main() {
     vec4 viewPos = uInvProj * vec4(ndc, 1.0, 1.0); 
     viewPos /= viewPos.w; 
     vec3 rd = normalize((uInvView * vec4(viewPos.xyz, 0.0)).xyz);
-    vec3 ro = vec3(0.0); // camera is the local origin, always
+    vec3 ro = vec3(0.0);
 
     float tAtmos0, tAtmos1;
     if (!raySphere(ro, rd, uPlanetPosRel, uAtmosRadius, tAtmos0, tAtmos1) || tAtmos1 < 0.0) {

@@ -7,18 +7,24 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 
-constexpr bool SHOULD_SUBSTEP_UPDATES = true;
-constexpr double MAX_UPDATE_DT = 6000.0;
-constexpr double COLLISION_BIAS = 0.5;
-
 class PhysicsEngine {
+private:
+    void updateImpl(Simulation& sim, double dt);
+
 public:
     UpdateLimiter updateLimiter;
+
+    struct Config {
+        bool should_substep_updates = true;
+        double max_update_dt = 6000.0;
+        double collision_bias = 0.5;
+    };
+    Config config;
 
     PhysicsEngine(double maxUpdateRate);
     ~PhysicsEngine();
 
-    void update(Simulation& sim, double dT);
+    void update(Simulation& sim, double dt);
 };
 
 #endif // PHYSICS_ENGINE_H

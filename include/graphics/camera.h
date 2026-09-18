@@ -1,6 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
+#include "graphics/renderable.h"
 #include "physics/collider.h"
 #include "opengl_includes.h"
 #include <glm/glm.hpp>

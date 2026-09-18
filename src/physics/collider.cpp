@@ -63,22 +63,18 @@ CollisionInfo detectCollisionSphereOBB(SphereCollider* sphere, OBBCollider* obb)
     };
 }
 
-Collider::Collider(const RigidBody& rb, double restitution, double frictionCoeff)
+Collider::Collider(RigidBody& rb, double restitution, double frictionCoeff)
     : centerPos(rb.pos), restitution(restitution), frictionCoeff(frictionCoeff) {
     updateFromRigidBody(rb);
 }
 
 void Collider::updateFromRigidBody(const RigidBody& rb) {
     centerPos = rb.pos;
-}
-
-OBBCollider::OBBCollider(const RigidBody& rb, double restitution, double frictionCoeff, glm::dvec3 fullExtent)
-    : Collider(rb, restitution, frictionCoeff), halfExtent(fullExtent / 2.0) {}
-
-void OBBCollider::updateFromRigidBody(const RigidBody& rb) {
-    Collider::updateFromRigidBody(rb);
     rot = glm::dquat(rb.rot);
 }
+
+OBBCollider::OBBCollider(RigidBody& rb, double restitution, double frictionCoeff, glm::dvec3 fullExtent)
+    : Collider(rb, restitution, frictionCoeff), halfExtent(fullExtent / 2.0) {}
 
 CollisionInfo OBBCollider::detectCollision(Collider* other) {
     if (auto obb = dynamic_cast<OBBCollider*>(other)) {
@@ -94,12 +90,20 @@ const double OBBCollider::getMaxRadius() const {
     return glm::length(halfExtent);
 }
 
-SphereCollider::SphereCollider(const RigidBody& rb, double restitution, double frictionCoeff, double radius)
-    : Collider(rb, restitution, frictionCoeff), radius(radius) {}
-
-void SphereCollider::updateFromRigidBody(const RigidBody& rb) {
-    Collider::updateFromRigidBody(rb);
+glm::dmat3 OBBCollider::computeInertiaTensorBody(double mass) {
+    glm::dvec3 dims = 2.0 * halfExtent;
+    double Ixx = (1.0/12.0) * mass * (dims.y*dims.y + dims.z*dims.z);
+    double Iyy = (1.0/12.0) * mass * (dims.x*dims.x + dims.z*dims.z);
+    double Izz = (1.0/12.0) * mass * (dims.x*dims.x + dims.y*dims.y);
+    return glm::dmat3(
+        Ixx, 0.0, 0.0,
+        0.0, Iyy, 0.0,
+        0.0, 0.0, Izz
+    );
 }
+
+SphereCollider::SphereCollider(RigidBody& rb, double restitution, double frictionCoeff, double radius)
+    : Collider(rb, restitution, frictionCoeff), radius(radius) {}
 
 CollisionInfo SphereCollider::detectCollision(Collider* other) {
     if (auto obb = dynamic_cast<OBBCollider*>(other)) {
@@ -121,4 +125,13 @@ CollisionInfo SphereCollider::detectCollision(Collider* other) {
 
 const double SphereCollider::getMaxRadius() const {
     return radius;
+}
+
+glm::dmat3 SphereCollider::computeInertiaTensorBody(double mass) {
+    double I = (2.0/5.0) * mass * radius*radius;
+    return glm::dmat3(
+        I, 0.0, 0.0,
+        0.0, I, 0.0,
+        0.0, 0.0, I 
+    );
 }

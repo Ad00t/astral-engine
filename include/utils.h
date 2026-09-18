@@ -7,3 +7,5 @@ float toRenderUnits(double realDist);
 
 glm::dvec3 toRealUnits(glm::vec3 renderPos);
 double toRealUnits(float renderDist);
+
+float getModelBoundingRadius(const glm::mat4& model);

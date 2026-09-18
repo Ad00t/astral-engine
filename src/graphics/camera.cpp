@@ -1,8 +1,7 @@
 #include "graphics/camera.h" 
 #include "graphics/renderable.h"
-#include "core/simulation.h"
+#include "physics/collider.h"
 #include "utils.h"
-#include "glm/ext/matrix_clip_space.hpp"
 #include "imgui_impl_glfw.h"
 #include "opengl_includes.h"
 #define GLM_ENABLE_EXPERIMENTAL

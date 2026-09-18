@@ -64,6 +64,7 @@ GraphicsEngine::GraphicsEngine(std::string title, int initialWidth, int initialH
    
     // Load shaders
     shaders.emplace("entity", Shader("entity.vert", "entity.frag"));
+    shaders.emplace("exhaust", Shader("exhaust.vert", "exhaust.frag"));
     shaders.emplace("skybox", Shader("skybox.vert", "skybox.frag"));
     shaders.emplace("atmosphere", Shader("fullscreen.vert", "atmosphere.frag"));
     shaders.emplace("bloom", Shader("fullscreen.vert", "bloom.frag"));
@@ -104,11 +105,10 @@ GraphicsEngine::~GraphicsEngine() {
 
 void GraphicsEngine::renderScene(Simulation& sim) {
     cam->update();
+
     if (cam->width != width || cam->height != height) {
         resizeRenderTargets(cam->width, cam->height);
     }
-
-    // Geometry pass
 
     glBindFramebuffer(GL_FRAMEBUFFER, config.msaa_enabled ? msaaFBO : hdrFBO);
     glViewport(0, 0, width, height);
@@ -123,29 +123,40 @@ void GraphicsEngine::renderScene(Simulation& sim) {
         rend->renderPos = relPos;
     }
 
+    sim.renderables["spacebox"]->draw(sim, *cam);
+
     for (auto& [id, rend] : sim.renderables) {
         if (id == "spacebox") continue;
-        rend->setSunRenderPos(sim.renderables["sun"]->renderPos);
-        Collider* coll = (config.debug_mode && sim.colliders.contains(id)) ? sim.colliders.at(id).get() : nullptr;
-        rend->draw(*cam, coll);
-    }
-    sim.renderables["spacebox"]->draw(*cam, nullptr);
+        if (dynamic_cast<ExhaustPlume*>(rend.get())) continue;
 
-    // MSAA
+        rend->setSunRenderPos(sim.renderables["sun"]->renderPos);
+        rend->draw(sim, *cam);
+
+        if (config.debug_mode && sim.colliders.contains(id)) {
+            rend->drawDebug(sim, *cam);
+        }
+    }
+
+    for (auto& [id, rend] : sim.renderables) {
+        auto* exhaust = dynamic_cast<ExhaustPlume*>(rend.get());
+        if (!exhaust) continue;
+        exhaust->draw(sim, *cam);
+    }
 
     if (config.msaa_enabled) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, msaaFBO);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, hdrFBO);
+
         glReadBuffer(GL_COLOR_ATTACHMENT0);
         glDrawBuffer(GL_COLOR_ATTACHMENT0);
         glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
         glReadBuffer(GL_COLOR_ATTACHMENT1);
         glDrawBuffer(GL_COLOR_ATTACHMENT1);
         glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
         glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
     }
-
-    // Atmospheric scattering pass
 
     glBindFramebuffer(GL_FRAMEBUFFER, atmoFBO);
     glViewport(0, 0, width, height);
@@ -163,10 +174,13 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     atmo.setMat4("uInvView", glm::inverse(cam->view));
 
     glBindVertexArray(quadVAO);
+
     for (auto& [id, rend] : sim.renderables) {
         const AtmosphereParams& atmos = rend->getMaterial().atmosphere;
         if (!atmos.enabled) continue;
+
         float collMaxRadius = toRenderUnits(sim.colliders.contains(id) ? sim.colliders.at(id)->getMaxRadius() : 1.0);
+
         atmo.setVec3("uPlanetPosRel", toRenderUnits(rend->realPos - cam->realPos));
         atmo.setFloat("uPlanetRadius", collMaxRadius);
         atmo.setFloat("uAtmosRadius", collMaxRadius * atmos.radiusMultiplier);
@@ -178,33 +192,31 @@ void GraphicsEngine::renderScene(Simulation& sim) {
         atmo.setInt("uNumSamples", atmos.numSamples);
         atmo.setInt("uNumLightSamples", atmos.numLightSamples);
         atmo.setFloat("uMieG", atmos.mieG);
+
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
-    glBindVertexArray(0);
 
+    glBindVertexArray(0);
     glDisable(GL_BLEND);
     glDepthMask(GL_TRUE);
     glEnable(GL_DEPTH_TEST);
-
-    // Bloom pass
 
     bool horizontal = true;
     Shader& bloomShader = shaders["bloom"];
     bloomShader.use();
     glViewport(0, 0, bloomWidth, bloomHeight);
+
     for (int i = 0; i < config.num_bloom_passes; i++) {
-        glBindFramebuffer(GL_FRAMEBUFFER, bloomFBO[horizontal]); 
+        glBindFramebuffer(GL_FRAMEBUFFER, bloomFBO[horizontal]);
         bloomShader.setBool("uHorizontal", horizontal);
-        glBindTexture(
-            GL_TEXTURE_2D, i == 0 ? hdrColorTex[1] : bloomColorTex[!horizontal]
-        ); 
+        glBindTexture(GL_TEXTURE_2D, i == 0 ? hdrColorTex[1] : bloomColorTex[!horizontal]);
+
         glBindVertexArray(quadVAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
+
         horizontal = !horizontal;
     }
-
-    // Composite + tonemapping pass
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDisable(GL_DEPTH_TEST);
@@ -213,10 +225,13 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     Shader& tonemapShader = shaders["tonemap"];
     tonemapShader.use();
     glViewport(0, 0, width, height);
+
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, hdrColorTex[0]);
+
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, bloomColorTex[config.num_bloom_passes % 2]);
+
     tonemapShader.setInt("uHDRColorTex", 0);
     tonemapShader.setInt("uBloomColorTex", 1);
     tonemapShader.setFloat("uExposure", 1.0f);
@@ -224,6 +239,7 @@ void GraphicsEngine::renderScene(Simulation& sim) {
     glBindVertexArray(quadVAO);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
+
     glEnable(GL_DEPTH_TEST);
 }
 

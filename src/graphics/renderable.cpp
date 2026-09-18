@@ -98,7 +98,9 @@ static std::vector<uint32_t> makeIdentityIndices(size_t count) {
 
 // helper to generate sphere vertices/indices
 static void generateSphere(uint32_t sectorCount, uint32_t stackCount, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices) {
-    const float radius = 1.0f;
+    vertices.clear();
+    indices.clear();
+    static const float radius = 1.0f;
     static constexpr double pi = std::numbers::pi;
 
     for (uint32_t i = 0; i <= stackCount; ++i) {
@@ -143,6 +145,128 @@ static void generateSphere(uint32_t sectorCount, uint32_t stackCount, std::vecto
                 indices.push_back(k2 + 1);
             }
         }
+    }
+}
+
+// helper to generate cylinder vertices/indices
+// Z is the vertical axis. Origin is the center of the TOP face:
+// top ring/cap at z = 0, bottom ring/cap at z = -height.
+static void generateCylinder(uint32_t sectorCount, std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, bool renderBottom) {
+    static const float radius = 1.0f;
+    static const float height = 1.0f;
+    static constexpr double pi = std::numbers::pi;
+
+    // Side walls
+    for (int i = 0; i <= sectorCount; ++i) {
+        float angle = 2.0f * pi * i / sectorCount;
+        float x = std::cos(angle);
+        float y = std::sin(angle);
+
+        // Subdivide into bottom (z = -height) and top (z = 0) ring vertices
+        for (int ring = 0; ring < 2; ++ring) {
+            float z = (ring == 0) ? -height : 0.0f;
+
+            Vertex v;
+            v.pos[0] = x * radius;
+            v.pos[1] = y * radius;
+            v.pos[2] = z;
+
+            // Side normals point straight outward from the center axis
+            v.normal[0] = x;
+            v.normal[1] = y;
+            v.normal[2] = 0.0f;
+
+            v.uv[0] = (float)i / sectorCount;
+            v.uv[1] = (float)ring;
+
+            vertices.push_back(v);
+        }
+    }
+
+    // Indices for side wall triangles (stitching the two rings together)
+    for (int i = 0; i < sectorCount; ++i) {
+        uint32_t b0 = i * 2;       // Current bottom vertex
+        uint32_t t0 = b0 + 1;      // Current top vertex
+        uint32_t b1 = b0 + 2;      // Next bottom vertex
+        uint32_t t1 = b0 + 3;      // Next top vertex
+
+        // Triangle 1
+        indices.push_back(b1);
+        indices.push_back(t0);
+        indices.push_back(b0);
+
+        // Triangle 2
+        indices.push_back(t1);
+        indices.push_back(t0);
+        indices.push_back(b1);
+    }
+
+    if (renderBottom) {
+        // Bottom cap
+        unsigned int bottomCenterIndex = vertices.size();
+
+        // Center vertex
+        Vertex bottomCenter = {{0.0f, 0.0f, -height}, {0.0f, 0.0f, -1.0f}, {0.5f, 0.5f}};
+        vertices.push_back(bottomCenter);
+
+        // Ring vertices for bottom cap
+        for (int i = 0; i < sectorCount; ++i) {
+            float angle = 2.0f * pi * i / sectorCount;
+            float x = std::cos(angle);
+            float y = std::sin(angle);
+
+            Vertex v;
+            v.pos[0] = x * radius;
+            v.pos[1] = y * radius;
+            v.pos[2] = -height;
+            v.normal[0] = 0.0f; v.normal[1] = 0.0f; v.normal[2] = -1.0f; // Pointing down
+            v.uv[0] = x * 0.5f + 0.5f;
+            v.uv[1] = y * 0.5f + 0.5f;
+            vertices.push_back(v);
+        }
+
+        // Bottom triangles
+        for (int i = 0; i < sectorCount; ++i) {
+            uint32_t current = bottomCenterIndex + 1 + i;
+            uint32_t next = bottomCenterIndex + 1 + ((i + 1) % sectorCount);
+
+            indices.push_back(bottomCenterIndex);
+            indices.push_back(current);
+            indices.push_back(next);
+        }
+    }
+
+    // Top cap
+    unsigned int topCenterIndex = vertices.size();
+
+    // Center vertex (this is the origin)
+    Vertex topCenter = {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.5f, 0.5f}};
+    vertices.push_back(topCenter);
+
+    // Ring vertices for top cap
+    for (int i = 0; i < sectorCount; ++i) {
+        float angle = 2.0f * pi * i / sectorCount;
+        float x = std::cos(angle);
+        float y = std::sin(angle);
+
+        Vertex v;
+        v.pos[0] = x * radius;
+        v.pos[1] = y * radius;
+        v.pos[2] = 0.0f;
+        v.normal[0] = 0.0f; v.normal[1] = 0.0f; v.normal[2] = 1.0f; // Pointing up
+        v.uv[0] = x * 0.5f + 0.5f;
+        v.uv[1] = y * 0.5f + 0.5f;
+        vertices.push_back(v);
+    }
+
+    // Top triangles
+    for (int i = 0; i < sectorCount; ++i) {
+        unsigned int current = topCenterIndex + 1 + i;
+        unsigned int next = topCenterIndex + 1 + ((i + 1) % sectorCount);
+
+        indices.push_back(topCenterIndex);
+        indices.push_back(next);
+        indices.push_back(current);
     }
 }
 
@@ -206,7 +330,6 @@ Mesh::~Mesh() {
 }
 
 void Mesh::draw() const {
-
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
@@ -214,20 +337,20 @@ void Mesh::draw() const {
 
 // RENDERABLE
 
-Renderable::Renderable(Material mat, glm::vec3 renderScale)
-    : renderScale(renderScale) {
+Renderable::Renderable(const std::string& id, Material mat, glm::vec3 renderScale, glm::dvec3 realOffset)
+    : id(id), renderScale(renderScale), realOffset(realOffset) {
     materials.push_back(std::move(mat));
 }
 
-Renderable::Renderable(std::vector<Material> mats, glm::vec3 renderScale)
-    : materials(std::move(mats)), renderScale(renderScale) {
+Renderable::Renderable(const std::string& id, std::vector<Material> mats, glm::vec3 renderScale, glm::dvec3 realOffset)
+    : id(id), materials(std::move(mats)), renderScale(renderScale), realOffset(realOffset) {
 }
 
 void Renderable::initDebugGeometry(const Collider* coll) {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     if (auto* sphereColl = dynamic_cast<const SphereCollider*>(coll)) {
-        generateSphere(64, 64, vertices, indices);
+        generateSphere(256, 256, vertices, indices);
     } else if (auto* obbColl = dynamic_cast<const OBBCollider*>(coll)) {
         vertices = {
             {{-0.5f, -0.5f, -0.5f}}, // 0
@@ -249,69 +372,44 @@ void Renderable::initDebugGeometry(const Collider* coll) {
     debugInitialized = true;
 }
 
-void Renderable::draw(const Camera& cam, const Collider* coll) {
-    for (const auto& mesh : meshes) {
-        bindMaterial(cam, materials.at(mesh.materialIndex));
-        mesh.draw();
+void Renderable::drawDebug(const Simulation& sim, const Camera& cam) {
+    if (!sim.colliders.contains(id)) return;
+    Collider* coll = sim.colliders.at(id).get();
+    if (!debugInitialized) initDebugGeometry(coll);
+
+    Shader entityShader = materials[0].shader; // Should be entity?
+    entityShader.setMat4("view", cam.view);
+    entityShader.setMat4("projection", cam.projection);
+    entityShader.setBool("uIsDebug", true);
+
+    glDisable(GL_CULL_FACE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    glm::mat4 collModel = glm::translate(glm::mat4(1.0f), toRenderUnits(coll->centerPos - cam.realPos));
+    collModel = collModel * glm::mat4_cast(glm::quat(coll->rot));
+
+    if (auto* sphereColl = dynamic_cast<const SphereCollider*>(coll)) {
+        collModel = glm::scale(collModel, glm::vec3(toRenderUnits(sphereColl->radius)));
+        entityShader.setMat4("model", collModel);
+
+        glBindVertexArray(debugMesh.VAO);
+        glDrawElements(GL_TRIANGLES, debugMesh.indexCount, GL_UNSIGNED_INT, 0);
+    } else if (auto* obbColl = dynamic_cast<const OBBCollider*>(coll)) {
+        collModel = glm::scale(collModel, toRenderUnits(obbColl->halfExtent) * 2.0f);
+        entityShader.setMat4("model", collModel);
+        
+        glBindVertexArray(debugMesh.VAO);
+        glDrawElements(GL_LINES, debugMesh.indexCount, GL_UNSIGNED_INT, 0);
     }
 
-    if (coll != nullptr) {
-        if (!debugInitialized) initDebugGeometry(coll);
-
-        Shader entityShader = materials[0].shader; // Should be entity?
-        entityShader.setMat4("view", cam.view);
-        entityShader.setMat4("projection", cam.projection);
-        entityShader.setBool("uIsDebug", true);
-
-        glDisable(GL_CULL_FACE);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-        glm::mat4 collModel = glm::translate(glm::mat4(1.0f), toRenderUnits(coll->centerPos - cam.realPos));
-        if (auto* sphereColl = dynamic_cast<const SphereCollider*>(coll)) {
-            collModel = glm::scale(collModel, glm::vec3(toRenderUnits(sphereColl->radius)));
-            entityShader.setMat4("model", collModel);
-
-            glBindVertexArray(debugMesh.VAO);
-            glDrawElements(GL_TRIANGLES, debugMesh.indexCount, GL_UNSIGNED_INT, 0);
-        } else if (auto* obbColl = dynamic_cast<const OBBCollider*>(coll)) {
-            collModel = collModel * glm::mat4_cast(glm::quat(obbColl->rot));
-            collModel = glm::scale(collModel, toRenderUnits(obbColl->halfExtent) * 2.0f);
-            entityShader.setMat4("model", collModel);
-            
-            glBindVertexArray(debugMesh.VAO);
-            glDrawElements(GL_LINES, debugMesh.indexCount, GL_UNSIGNED_INT, 0);
-        }
-
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        glEnable(GL_CULL_FACE);
-        glBindVertexArray(0);
-    }
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glEnable(GL_CULL_FACE);
+    glBindVertexArray(0);
 }
 
-void Renderable::bindMaterial(const Camera& cam, const Material& m) {
-    m.shader.use();
-    m.shader.setMat4("model", model);
-    m.shader.setMat4("view", cam.view);
-    m.shader.setMat4("projection", cam.projection);
-    m.shader.setBool("uIsDebug", m.uIsDebug);
-    m.shader.setVec4("uBaseColor", m.uBaseColor);
-    m.shader.setInt("uTextureMap", m.uTextureMap);
-    m.shader.setBool("uUseTexture", m.uUseTexture);
-    m.shader.setInt("uNightTextureMap", m.uNightTextureMap);
-    m.shader.setBool("uUseDayNightBlend", m.uUseDayNightBlend);
-    m.shader.setVec3("uSunPos", m.uSunPos);
-    m.shader.setVec3("uAmbientLighting", m.uAmbientLighting);
-    m.shader.setVec3("uNightAmbientBoost", m.uNightAmbientBoost);
-    m.shader.setVec3("uEmissiveLighting", m.uEmissiveLighting);
-
-    if (m.uUseTexture) {
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, m.textureID);
-    }
-    if (m.uUseDayNightBlend) {
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, m.textureID2);
-    }
+void Renderable::updateFromRigidBody(const RigidBody& rb) {
+    realPos = rb.pos + glm::dquat(rb.rot) * realOffset;
+    rotation = glm::mat4_cast(rb.rot);
 }
 
 void Renderable::setModel(const glm::mat4& m) {
@@ -332,9 +430,37 @@ static glm::mat4 aiToGlm(const aiMatrix4x4& m) {
     return glm::transpose(glm::make_mat4(&m.a1));
 }
 
-Model::Model(const std::string& path, Material materialTemplate, glm::vec3 renderScale)
-    : Renderable(std::vector<Material>{}, renderScale), materialTemplate(std::move(materialTemplate)) {
+Model::Model(const std::string& id, const std::string& path, Material materialTemplate, glm::vec3 renderScale, glm::dvec3 realOffset)
+    : Renderable(id, std::vector<Material>{}, renderScale, realOffset), materialTemplate(std::move(materialTemplate)) {
     loadModel(path);
+}
+
+void Model::draw(const Simulation& sim, const Camera& cam) {
+    for (const Mesh& mesh : meshes) {
+        const Material& mat = materials.at(mesh.materialIndex);
+
+        mat.shader.use();
+        mat.shader.setMat4("model", model);
+        mat.shader.setMat4("view", cam.view);
+        mat.shader.setMat4("projection", cam.projection);
+        mat.shader.setBool("uIsDebug", mat.uIsDebug);
+        mat.shader.setVec4("uBaseColor", mat.uBaseColor);
+        mat.shader.setInt("uTextureMap", mat.uTextureMap);
+        mat.shader.setBool("uUseTexture", mat.uUseTexture);
+        mat.shader.setVec3("uSunPos", mat.uSunPos);
+        mat.shader.setVec3("uAmbientLighting", mat.uAmbientLighting);
+        mat.shader.setVec3("uEmissiveLighting", mat.uEmissiveLighting);
+        mat.shader.setBool("uUseRaytracedSphere", false);
+        mat.shader.setBool("uUseDayNightBlend", false);
+        mat.shader.setVec3("uNightAmbientBoost", glm::vec3(0.0f));
+
+        if (mat.uUseTexture) {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, mat.textureID);
+        }
+
+        mesh.draw();
+    }
 }
 
 void Model::loadModel(const std::string& path) {
@@ -469,25 +595,25 @@ void Model::normalizeAndUpload(std::vector<RawMesh>& raw) {
 
 // SKYBOX
 
-SkyBox::SkyBox(Material mat) : Renderable(std::move(mat)) {
+SkyBox::SkyBox(const std::string& id, Material mat) : Renderable(id, std::move(mat)) {
     meshes.emplace_back(skyboxVertices, makeIdentityIndices(skyboxVertices.size()), 0);
 }
 
-void SkyBox::draw(const Camera& cam, const Collider* coll) {
-    glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(cam.view));
-    const Material& m = materials[0];
+void SkyBox::draw(const Simulation& sim, const Camera& cam) {
+    const Mesh& mesh = meshes[0];
+    const Material& mat = materials[mesh.materialIndex];
 
     glDepthFunc(GL_GEQUAL);
     glDepthMask(GL_FALSE);
 
-    m.shader.use();
-    m.shader.setMat4("view", viewNoTranslation);
-    m.shader.setMat4("projection", cam.projection);
+    mat.shader.use();
+    mat.shader.setMat4("view", glm::mat4(glm::mat3(cam.view)));
+    mat.shader.setMat4("projection", cam.projection);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, m.textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, mat.textureID);
 
-    meshes[0].draw();
+    mesh.draw();
 
     glDepthMask(GL_TRUE);
     glDepthFunc(GL_GREATER);
@@ -495,16 +621,173 @@ void SkyBox::draw(const Camera& cam, const Collider* coll) {
 
 // CUBE
 
-Cube::Cube(Material mat, glm::vec3 renderScale) : Renderable(mat, renderScale) {
+Cube::Cube(const std::string& id, Material mat, glm::vec3 renderScale, glm::dvec3 realOffset)
+    : Renderable(id, mat, renderScale, realOffset) {
     meshes.emplace_back(cubeVertices, cubeIndices, 0);
 }
 
-// SPHERE
+void Cube::draw(const Simulation& sim, const Camera& cam) {
+    const Mesh& mesh = meshes[0];
+    const Material& mat = materials[mesh.materialIndex];
 
+    mat.shader.use();
+    mat.shader.setMat4("model", model);
+    mat.shader.setMat4("view", cam.view);
+    mat.shader.setMat4("projection", cam.projection);
+    mat.shader.setBool("uIsDebug", mat.uIsDebug);
+    mat.shader.setVec4("uBaseColor", mat.uBaseColor);
+    mat.shader.setInt("uTextureMap", mat.uTextureMap);
+    mat.shader.setBool("uUseTexture", mat.uUseTexture);
+    mat.shader.setVec3("uSunPos", mat.uSunPos);
+    mat.shader.setVec3("uAmbientLighting", mat.uAmbientLighting);
+    mat.shader.setVec3("uEmissiveLighting", mat.uEmissiveLighting);
+    mat.shader.setBool("uUseRaytracedSphere", false);
+    mat.shader.setBool("uUseDayNightBlend", false);
+    mat.shader.setVec3("uNightAmbientBoost", glm::vec3(0.0f));
 
-Sphere::Sphere(Material mat, glm::vec3 renderScale) : Renderable(std::move(mat), renderScale) {
+    if (mat.uUseTexture) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, mat.textureID);
+    }
+
+    mesh.draw();
+}
+
+// CELESTIAL BODY 
+
+CelestialBody::CelestialBody(const std::string& id, Material mat, glm::vec3 renderScale, glm::dvec3 realOffset)
+    : Renderable(id, mat, renderScale, realOffset) {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
-    generateSphere(256, 256, vertices, indices);
+    generateSphere(512, 512, vertices, indices);
     meshes.emplace_back(std::move(vertices), std::move(indices), 0);
+}
+
+void CelestialBody::draw(const Simulation& sim, const Camera& cam) {
+    const Mesh& mesh = meshes[0];
+    const Material& mat = materials[mesh.materialIndex];
+
+    mat.shader.use();
+    mat.shader.setMat4("model", model);
+    mat.shader.setMat4("view", cam.view);
+    mat.shader.setMat4("projection", cam.projection);
+    mat.shader.setBool("uIsDebug", mat.uIsDebug);
+    mat.shader.setVec4("uBaseColor", mat.uBaseColor);
+    mat.shader.setInt("uTextureMap", mat.uTextureMap);
+    mat.shader.setBool("uUseTexture", mat.uUseTexture);
+    mat.shader.setInt("uNightTextureMap", mat.uNightTextureMap);
+    mat.shader.setBool("uUseDayNightBlend", mat.uUseDayNightBlend);
+    mat.shader.setVec3("uSunPos", mat.uSunPos);
+    mat.shader.setVec3("uAmbientLighting", mat.uAmbientLighting);
+    mat.shader.setVec3("uNightAmbientBoost", mat.uNightAmbientBoost);
+    mat.shader.setVec3("uEmissiveLighting", mat.uEmissiveLighting);
+    mat.shader.setBool("uUseRaytracedSphere", mat.uUseRaytracedSphere);
+
+    if (mat.uUseTexture) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, mat.textureID);
+    }
+
+    if (mat.uUseDayNightBlend) {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, mat.textureID2);
+    }
+
+    mesh.draw();
+}
+
+// EXHAUST PLUME
+
+ExhaustPlume::ExhaustPlume(const std::string& id, Material mat, glm::vec3 renderScale, glm::dvec3 realOffset, ExhaustConfig cfg)
+    : Renderable(id, std::move(mat), renderScale, realOffset), config(cfg) {
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+
+    generateCylinder(64, vertices, indices, false);
+    meshes.emplace_back(std::move(vertices), std::move(indices), 0);
+}
+
+void ExhaustPlume::draw(const Simulation& sim, const Camera& cam) {
+    size_t delimPos = id.find(':');
+    if (delimPos == std::string::npos) return;
+
+    const std::string mainID = id.substr(0, delimPos);
+    const std::string thrusterID = id.substr(delimPos + 1);
+
+    if (!sim.controllers.contains(mainID)) return;
+
+    auto& controller = sim.controllers.at(mainID);
+    if (!controller->thrusters.contains(thrusterID)) return;
+
+    Thruster& thruster = controller->thrusters.at(thrusterID);
+    if (thruster.thrust <= 0.0f) return;
+
+    const Mesh& mesh = meshes[0];
+    const Material& mat = materials[mesh.materialIndex];
+
+    constexpr float maxThrust = 7.44e7f;
+    float thrustFactor = glm::clamp(static_cast<float>(thruster.thrust) / maxThrust, 0.0f, 1.0f);
+
+    float plumeLength = glm::mix(config.lengthIdle, config.lengthFull, thrustFactor);
+    float plumeRadius = glm::mix(config.radiusIdle, config.radiusFull, thrustFactor);
+
+    glm::vec3 localExhaustDir = -glm::vec3(thruster.dir);
+    if (glm::dot(localExhaustDir, localExhaustDir) < 1e-8f) {
+        localExhaustDir = glm::vec3(0.0f, -1.0f, 0.0f);
+    } else {
+        localExhaustDir = glm::normalize(localExhaustDir);
+    }
+
+    glm::vec3 exhaustDir = glm::normalize(glm::vec3(rotation * glm::vec4(localExhaustDir, 0.0f)));
+    glm::quat cylinderAlignment = glm::rotation(glm::vec3(0.0f, 0.0f, -1.0f), localExhaustDir);
+
+    glm::mat4 plumeModel = glm::translate(glm::mat4(1.0f), renderPos) * 
+                           rotation * 
+                           glm::mat4_cast(cylinderAlignment) * 
+                           glm::scale(glm::mat4(1.0f), glm::vec3(plumeRadius, plumeRadius, plumeLength));
+
+    mat.shader.use();
+    mat.shader.setMat4("model", plumeModel);
+    mat.shader.setMat4("view", cam.view);
+    mat.shader.setMat4("projection", cam.projection);
+    mat.shader.setFloat("uThrust", static_cast<float>(thruster.thrust));
+    mat.shader.setVec3("uThrustDir", exhaustDir);
+    mat.shader.setFloat("uTime", static_cast<float>(glfwGetTime()));
+
+    // Cone shape & dynamics uniforms
+    mat.shader.setFloat("uExpansionRate", config.expansionRate);
+    mat.shader.setFloat("uExpansionPower", config.expansionPower);
+    mat.shader.setInt("uDiamondCount", config.diamondCount);
+    mat.shader.setFloat("uNeckStrength", config.neckStrength);
+    mat.shader.setFloat("uStreakSpeed", config.streakSpeed);
+    mat.shader.setFloat("uStreakSharpness", config.streakSharpness);
+
+    // Color uniforms
+    mat.shader.setVec3("uCoreColorCold", config.coreColorCold);
+    mat.shader.setVec3("uCoreColorHot", config.coreColorHot);
+    mat.shader.setVec3("uMachColor", config.machColor);
+    mat.shader.setVec3("uFringeColor", config.fringeColor);
+    mat.shader.setFloat("uFringeAlphaScale", config.fringeAlphaScale);
+    mat.shader.setFloat("uFringeSpread", config.fringeSpread);
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunci(0, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunci(1, GL_ONE, GL_ONE);
+
+    // Draw passes (Outer fringe, Mach sheath, Inner core)
+    mat.shader.setInt("uRenderPass", 2);
+    mesh.draw();
+
+    mat.shader.setInt("uRenderPass", 1);
+    mesh.draw();
+
+    mat.shader.setInt("uRenderPass", 0);
+    mesh.draw();
+
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_CULL_FACE);
 }

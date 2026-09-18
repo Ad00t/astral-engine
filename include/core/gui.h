@@ -5,7 +5,7 @@
 
 class GUI {
 private:
-    std::string camTargetID = "iss";
+    std::string camTargetID = "starship";
 
 public:
     bool initialized = true;

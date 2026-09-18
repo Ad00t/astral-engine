@@ -18,3 +18,15 @@ glm::dvec3 toRealUnits(glm::vec3 renderPos) {
 double toRealUnits(float renderDist) {
     return (double) renderDist / RENDER_SCALE_FACTOR;
 }
+
+float getModelBoundingRadius(const glm::mat4& model) {
+    glm::vec3 basisX = glm::vec3(model[0]); 
+    glm::vec3 basisY = glm::vec3(model[1]); 
+    glm::vec3 basisZ = glm::vec3(model[2]);
+
+    float scaleX = glm::length(basisX);
+    float scaleY = glm::length(basisY);
+    float scaleZ = glm::length(basisZ);
+
+    return fmax(fmax(scaleX, scaleY), scaleZ);
+}

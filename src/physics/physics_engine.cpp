@@ -1,5 +1,8 @@
 #include "physics/physics_engine.h"
+#include "core/entity_controller.h"
 #include "core/simulation.h"
+#include "glm/ext/vector_double3.hpp"
+#include "physics/rigidbody.h"
 #include "utils.h"
 #include "glm/geometric.hpp"
 #include <glm/glm.hpp>
@@ -13,7 +16,7 @@ PhysicsEngine::PhysicsEngine(double maxUpdateRate)
 
 PhysicsEngine::~PhysicsEngine() {}
 
-void updateImpl(Simulation& sim, double dT) {
+void PhysicsEngine::updateImpl(Simulation& sim, double dt) {
     // Gravity
     for (auto it1 = sim.rigidbodies.begin(); it1 != sim.rigidbodies.end(); ++it1) {
         auto& [id1, rb1] = *it1;
@@ -26,35 +29,32 @@ void updateImpl(Simulation& sim, double dT) {
             if (r < 1e-4) continue;
             glm::dvec3 F_g = (G * rb1.mass * rb2.mass / (r * r)) * glm::normalize(dir);
 
-            rb1.acc_new += F_g / rb1.mass;
-            rb2.acc_new += F_g / rb2.mass;
+            rb1.applyForceAtPoint(F_g, rb1.pos, true);
+            rb2.applyForceAtPoint(F_g, rb2.pos, true);
         }
     }
    
-    // Integrate velocities
+    // Integrate velocities & angular velocities
     for (auto& [id, rb] : sim.rigidbodies) {
-        rb.vel = rb.vel + 0.5 * (rb.acc + rb.acc_new) * dT;
+        rb.vel = rb.vel + 0.5 * (rb.acc + rb.acc_new) * dt;
         rb.acc = rb.acc_new;
         rb.acc_new = glm::dvec3(0.0);
+
+        rb.ang_vel = rb.ang_vel + 0.5 * (rb.ang_acc + rb.ang_acc_new) * dt;
+        rb.ang_acc = rb.ang_acc_new;
+        rb.ang_acc_new = glm::dvec3(0.0);
     }
 
     // Integrate positions & rotations
     for (auto& [id, rb] : sim.rigidbodies) {
-        rb.pos = rb.pos + rb.vel * dT + 0.5 * rb.acc * dT*dT;
+        rb.pos = rb.pos + rb.vel * dt + 0.5 * rb.acc * dt*dt;
 
-        double ang_vel_norm = glm::l2Norm(rb.ang_vel);
-        double theta = ang_vel_norm * dT;
-        glm::dvec3 u_hat = rb.ang_vel / ang_vel_norm;
-        glm::quat dq(1.0, 0.0, 0.0, 0.0);
-        if (theta > 0) {
-            dq = glm::quat(
-                glm::cos(theta/2), 
-                u_hat.x * glm::sin(theta/2),
-                u_hat.y * glm::sin(theta/2),
-                u_hat.z * glm::sin(theta/2)
-            );
+        double w_len = glm::length(rb.ang_vel);
+        if (w_len > 1e-12) {
+            glm::dvec3 axis = rb.ang_vel / w_len;
+            glm::quat dq = glm::angleAxis(w_len * dt, axis);
+            rb.rot = glm::normalize(dq * rb.rot);
         }
-        rb.rot = glm::normalize(dq * rb.rot);
     }
     
     // Update collider geometry
@@ -77,58 +77,93 @@ void updateImpl(Simulation& sim, double dT) {
             CollisionInfo collision = coll1->detectCollision(coll2.get());
             if (!collision.isColliding) continue;
 
-            glm::dvec3 relative_vel = rb2.vel - rb1.vel;
-            glm::dvec3 collision_normal = glm::normalize(collision.mtv);
-            double constraint_speed = glm::dot(collision_normal, relative_vel);
+            // Separate bodies
 
             double total_mass = rb1.mass + rb2.mass;
-            double inverse_mass = 1.0 / (1.0/rb1.mass + 1.0/rb2.mass);
-
             rb1.pos += collision.mtv * rb2.mass / total_mass;
             rb2.pos -= collision.mtv * rb1.mass / total_mass;
 
+            glm::dvec3 r1 = collision.contactPoint1 - rb1.pos;
+            glm::dvec3 r2 = collision.contactPoint2 - rb2.pos;
+            glm::dvec3 v_cp_rb1 = rb1.vel + glm::cross(rb1.ang_vel, r1);
+            glm::dvec3 v_cp_rb2 = rb2.vel + glm::cross(rb2.ang_vel, r2);
+            glm::dvec3 v_cp_rel = v_cp_rb2 - v_cp_rb1;
+
+            glm::dvec3 collision_n = glm::normalize(collision.mtv);
+            double constraint_speed = glm::dot(collision_n, v_cp_rel);
+            if (constraint_speed <= 1e-12) continue;
+
+            // Normal impulse
+            
+            glm::dmat3 invI1 = rb1.getInvInertiaWorld();
+            glm::dmat3 invI2 = rb2.getInvInertiaWorld();
+
+            double ang_term_n =
+                glm::dot(collision_n, glm::cross(invI1 * glm::cross(r1, collision_n), r1)) +
+                glm::dot(collision_n, glm::cross(invI2 * glm::cross(r2, collision_n), r2));
+            double k_n = 1.0/rb1.mass + 1.0/rb2.mass + ang_term_n;
+
             double elasticity = coll1->restitution * coll2->restitution;
-            double j_n = constraint_speed * (1.0 + elasticity) * inverse_mass;
-            glm::dvec3 impulse_normal = j_n * collision_normal;
+            double j_n = (constraint_speed * (1.0 + elasticity)) / k_n;
+            glm::dvec3 impulse_n = j_n * collision_n;
 
-            if (constraint_speed > 0) { 
-                rb1.vel += impulse_normal / rb1.mass;
-                rb2.vel -= impulse_normal / rb2.mass;
+            rb1.vel += impulse_n / rb1.mass;
+            rb2.vel -= impulse_n / rb2.mass;
+            rb1.ang_vel += invI1 * glm::cross(r1, impulse_n);
+            rb2.ang_vel -= invI2 * glm::cross(r2, impulse_n);
+
+            // Recompute surface velocities after the normal impulse for friction
+
+            v_cp_rb1 = rb1.vel + glm::cross(rb1.ang_vel, r1);
+            v_cp_rb2 = rb2.vel + glm::cross(rb2.ang_vel, r2);
+            v_cp_rel = v_cp_rb2 - v_cp_rb1;
+            glm::dvec3 v_cp_rel_t = v_cp_rel - glm::dot(v_cp_rel, collision_n) * collision_n;
+
+            // Tangential (friction) impulse
+
+            glm::dvec3 collision_t(0.0);
+            double speed_cp_rel_t = glm::length(v_cp_rel_t);
+            if (speed_cp_rel_t > 1e-8) {
+                collision_t = v_cp_rel_t / speed_cp_rel_t;
             }
 
-            glm::dvec3 v_surf_rb1 = rb1.vel + glm::cross(rb1.ang_vel, collision.contactPoint1 - rb1.pos);
-            glm::dvec3 v_surf_rb2 = rb2.vel + glm::cross(rb2.ang_vel, collision.contactPoint2 - rb2.pos);
-            glm::dvec3 v_surf_rel = v_surf_rb2 - v_surf_rb1;
-            glm::dvec3 v_surf_rel_tan = v_surf_rel - glm::dot(v_surf_rel, collision_normal) * collision_normal;
-            glm::dvec3 collision_tangential(0.0);
-            double tan_len = glm::length(v_surf_rel_tan);
-            if (tan_len > 1e-8) {
-                collision_tangential = v_surf_rel_tan / tan_len;
-            }
-            double j_t_full = glm::dot(-v_surf_rel, collision_tangential) * inverse_mass;
+            double ang_term_t =
+                glm::dot(collision_t, glm::cross(invI1 * glm::cross(r1, collision_t), r1)) +
+                glm::dot(collision_t, glm::cross(invI2 * glm::cross(r2, collision_t), r2));
+            double k_t = 1.0/rb1.mass + 1.0/rb2.mass + ang_term_t;
+
+            double j_t_full = glm::dot(-v_cp_rel, collision_t) / k_t;
             double mu = coll1->frictionCoeff * coll2->frictionCoeff;
             double j_t = std::clamp(j_t_full, -mu * j_n, mu * j_n);
-            glm::dvec3 impulse_tangential = j_t * -collision_tangential; 
-
-            rb1.vel += impulse_tangential / rb1.mass;
-            rb2.vel -= impulse_tangential / rb2.mass;
-
-            // rb1.ang_vel += rb1.invInertiaWorld * glm::cross(collision.contactPoint1 - rb1.pos, impulse_tangential);
-            // rb2.ang_vel -= rb2.invInertiaWorld * glm::cross(collision.contactPoint2 - rb2.pos, impulse_tangential);
+            glm::dvec3 impulse_t = j_t * -collision_t;
+            
+            rb1.vel += impulse_t / rb1.mass;
+            rb2.vel -= impulse_t / rb2.mass;
+            // rb1.ang_vel += invI1 * glm::cross(r1, impulse_t);
+            // rb2.ang_vel -= invI2 * glm::cross(r2, impulse_t);
         }
+    }
+
+    // Update controllers
+    for (auto& [id, con] : sim.controllers) {
+        if (!sim.rigidbodies.contains(id)) continue;
+        RigidBody& rb = sim.rigidbodies.at(id);
+        con->updateSensors(rb);
+        con->runControlLoop(rb, dt);
+        rb.g_acc = glm::dvec3(0.0);
     }
 }
 
-void PhysicsEngine::update(Simulation& sim, double dT) {
-    if (!SHOULD_SUBSTEP_UPDATES || dT <= MAX_UPDATE_DT) {
-        updateImpl(sim, dT);
+void PhysicsEngine::update(Simulation& sim, double dt) {
+    if (!config.should_substep_updates || dt <= config.max_update_dt) {
+        updateImpl(sim, dt);
         return;
     }
 
-    double dTtotal = dT;
-    while (dTtotal > 0) {
-        dT = std::min(dTtotal, MAX_UPDATE_DT);
-        updateImpl(sim, dT);
-        dTtotal -= dT;
+    double dt_total = dt;
+    while (dt_total > 0) {
+        dt = std::min(dt_total, config.max_update_dt);
+        updateImpl(sim, dt);
+        dt_total -= dt;
     }
 }
