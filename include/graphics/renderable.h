@@ -50,6 +50,7 @@ struct Material {
     glm::vec3 uNightAmbientBoost = glm::vec3(0.8f);
     glm::vec3 uEmissiveLighting = glm::vec3(0.0f);
     bool uUseRaytracedSphere = false;
+    float uLunarLambertWeight = 0.1;
     
     AtmosphereParams atmosphere = {};
 

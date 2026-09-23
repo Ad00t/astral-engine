@@ -451,6 +451,7 @@ void Model::draw(const Camera& cam) {
         mat.shader.setBool("uUseRaytracedSphere", false);
         mat.shader.setBool("uUseDayNightBlend", false);
         mat.shader.setVec3("uNightAmbientBoost", glm::vec3(0.0f));
+        mat.shader.setFloat("uLunarLambertWeight", mat.uLunarLambertWeight);
 
         if (mat.uUseTexture) {
             glActiveTexture(GL_TEXTURE0);
@@ -642,6 +643,7 @@ void Cube::draw(const Camera& cam) {
     mat.shader.setBool("uUseRaytracedSphere", false);
     mat.shader.setBool("uUseDayNightBlend", false);
     mat.shader.setVec3("uNightAmbientBoost", glm::vec3(0.0f));
+    mat.shader.setFloat("uLunarLambertWeight", mat.uLunarLambertWeight);
 
     if (mat.uUseTexture) {
         glActiveTexture(GL_TEXTURE0);
@@ -680,6 +682,7 @@ void CelestialBody::draw(const Camera& cam) {
     mat.shader.setVec3("uNightAmbientBoost", mat.uNightAmbientBoost);
     mat.shader.setVec3("uEmissiveLighting", mat.uEmissiveLighting);
     mat.shader.setBool("uUseRaytracedSphere", mat.uUseRaytracedSphere);
+    mat.shader.setFloat("uLunarLambertWeight", mat.uLunarLambertWeight);
 
     if (mat.uUseTexture) {
         glActiveTexture(GL_TEXTURE0);

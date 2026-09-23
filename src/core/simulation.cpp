@@ -65,7 +65,8 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
             .uBaseColor = glm::vec4(1, 1, 0, 1),
             .uUseTexture = true,
             .uEmissiveLighting = glm::vec3(1000.0f),
-            .uUseRaytracedSphere = true
+            .uUseRaytracedSphere = true,
+            .uLunarLambertWeight = 0.75
         }
     ));
 
@@ -92,6 +93,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
             .uUseTexture = true,
             .uUseDayNightBlend = true,
             .uUseRaytracedSphere = true,
+            .uLunarLambertWeight = 0.75,
             .atmosphere = AtmosphereParams{ .enabled = true }
         }
     ));
@@ -116,7 +118,8 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
             .textureID = gEng.getTextureID("uvmap/moon"),
             .uBaseColor = glm::vec4(1, 1, 1, 1),
             .uUseTexture = true,
-            .uUseRaytracedSphere = true
+            .uUseRaytracedSphere = true,
+            .uLunarLambertWeight = 0.75
         }
     ));
 
@@ -145,6 +148,7 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
         "iss:hull", "resources/assets/models/iss.glb",
         Material{
             .shader = gEng.getShader("entity"),
+            .uLunarLambertWeight = 0.3f
         },
         glm::vec3(1.5f, 1.5f, 1.3f)
     ));
@@ -176,7 +180,8 @@ Simulation::Simulation(GraphicsEngine& gEng, PhysicsEngine& pEng) {
     starship->addRenderable(std::make_unique<ExhaustPlume>(
         "starship:main_engine", Material{
             .shader = gEng.getShader("exhaust"),
-            .uBaseColor = glm::vec4(1, 1, 1, 1)
+            .uBaseColor = glm::vec4(1, 1, 1, 1),
+            .uLunarLambertWeight = 0.1f
         },
         glm::vec3(1.0f), 
         starship->controller->thrusters.at("starship:main_engine").get()

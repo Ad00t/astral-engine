@@ -22,6 +22,7 @@ uniform vec3 uAmbientLighting;
 uniform vec3 uNightAmbientBoost;
 uniform vec3 uEmissiveLighting;
 uniform bool uUseRaytracedSphere;
+uniform float uLunarLambertWeight;
 
 const float PI = 3.14159265359;
 
@@ -82,7 +83,13 @@ void main() {
         }
     }
 
-    float diffuse = max(sunDot, 0.0);
+    vec3 viewDir = normalize(-workingPos);
+    float mu0 = max(sunDot, 0.0001);                      
+    float mu  = max(dot(workingNormal, viewDir), 0.0001); 
+    // McEwen "Lunar-Lambert" photometric function:
+    // blends Lommel-Seeliger (flat, backscattering) with Lambert (cosine falloff)
+    float diffuse = 2.0 * uLunarLambertWeight * (mu0 / (mu0 + mu))
+                   + (1.0 - uLunarLambertWeight) * mu0;
 
     vec3 nightBoost = vec3(0.0);
     if (uUseDayNightBlend) {
