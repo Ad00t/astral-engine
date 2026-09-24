@@ -8,7 +8,7 @@ Beyond orbital dynamics, the engine now models rigid body behavior for simulated
 
 The engine is being developed as a general sandbox for orbital mechanics and GNC (Guidance, Navigation, and Control) research rather than as a fixed application.
 
-## Demonstration
+<img width="1444" height="874" alt="astral-engine-eyecandy" src="https://github.com/user-attachments/assets/8996bde0-0e48-46b0-a965-3207e2c57871" />
 
 [astral-engine-demo-2.mp4](https://github.com/user-attachments/assets/ec9ce5c7-26cd-4210-801f-feff483dcd39)
 
